@@ -1,0 +1,168 @@
+{
+  "schema": 4,
+  "character": "role2",
+  "note": "动作配置。playable=false 的动作不会出现在工具箱动作池里，也不能手动播放，只在状态机内部自动使用（过渡动画、任务栏落地慌张挥手）。transition 字段 {from,to} 用 stand / sit_upright / sit_side 描述姿态方向。loop=false 表示只播一次，播完由前端切到目标动作。scale 为定稿出厂值。",
+  "canvas": 768,
+  "defaultPool": "idle",
+  "defaultAction": "stand_idle",
+  "groundRatio": 0.861,
+  "pools": {
+    "idle": {
+      "label": "待机",
+      "loop": true,
+      "playable": true,
+      "items": [
+        {
+          "id": "stand_idle",
+          "label": "站姿待机",
+          "posture": "stand",
+          "scale": 0.995,
+          "file": "assets/idle/站姿待机.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.9667
+        },
+        {
+          "id": "stand_flower",
+          "label": "站姿鲜花",
+          "posture": "stand",
+          "scale": 0.995,
+          "file": "assets/idle/站姿鲜花.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.9667
+        },
+        {
+          "id": "stand_phone",
+          "label": "站姿手机",
+          "posture": "stand",
+          "scale": 0.97,
+          "file": "assets/idle/站姿手机.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.9667
+        },
+        {
+          "id": "stand_book",
+          "label": "站姿书籍",
+          "posture": "stand",
+          "scale": 0.97,
+          "file": "assets/idle/站姿书籍.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.9667
+        },
+        {
+          "id": "sit_idle",
+          "label": "正坐待机",
+          "posture": "sit",
+          "sitKind": "upright",
+          "scale": 0.875,
+          "offset": 12.8,
+          "file": "assets/idle/正坐待机.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.9667
+        },
+        {
+          "id": "sit_lean",
+          "label": "侧坐单手撑",
+          "posture": "sit",
+          "sitKind": "side",
+          "scale": 0.875,
+          "offset": 12.8,
+          "file": "assets/idle/侧坐单手撑.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.9667
+        }
+      ]
+    },
+    "trans": {
+      "label": "过渡",
+      "loop": false,
+      "playable": false,
+      "items": [
+        {
+          "id": "trans_stand_to_upright",
+          "label": "站→正坐",
+          "transition": { "from": "stand", "to": "sit_upright" },
+          "scale": 0.995,
+          "file": "assets/trans/过渡_站到正坐.webm",
+          "fps": 60,
+          "frames": 179,
+          "duration": 2.984
+        },
+        {
+          "id": "trans_stand_to_side",
+          "label": "站→侧坐",
+          "transition": { "from": "stand", "to": "sit_side" },
+          "scale": 0.995,
+          "file": "assets/trans/过渡_站到侧坐.webm",
+          "fps": 60,
+          "frames": 179,
+          "duration": 2.984
+        },
+        {
+          "id": "trans_upright_to_stand",
+          "label": "正坐→站",
+          "transition": { "from": "sit_upright", "to": "stand" },
+          "scale": 1,
+          "file": "assets/trans/过渡_正坐到站.webm",
+          "fps": 60,
+          "frames": 179,
+          "duration": 2.984
+        },
+        {
+          "id": "trans_side_to_stand",
+          "label": "侧坐→站",
+          "transition": { "from": "sit_side", "to": "stand" },
+          "scale": 1,
+          "file": "assets/trans/过渡_侧坐到站.webm",
+          "fps": 60,
+          "frames": 179,
+          "duration": 2.984
+        },
+        {
+          "id": "trans_side_to_upright",
+          "label": "侧坐→正坐",
+          "transition": { "from": "sit_side", "to": "sit_upright" },
+          "scale": 0.995,
+          "file": "assets/trans/过渡_侧坐到正坐.webm",
+          "fps": 60,
+          "frames": 179,
+          "duration": 2.984
+        },
+        {
+          "id": "trans_upright_to_side",
+          "label": "正坐→侧坐",
+          "transition": { "from": "sit_upright", "to": "sit_side" },
+          "scale": 0.995,
+          "file": "assets/trans/过渡_正坐到侧坐.webm",
+          "fps": 60,
+          "frames": 179,
+          "duration": 2.984
+        }
+      ]
+    },
+    "panic": {
+      "label": "慌张",
+      "loop": false,
+      "playable": false,
+      "items": [
+        {
+          "id": "sit_panic",
+          "label": "正坐慌张挥手",
+          "posture": "sit",
+          "sitKind": "upright",
+          "scale": 0.88,
+          "offset": 12.8,
+          "file": "assets/idle/正坐慌张挥手.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967
+        }
+      ]
+    }
+  }
+}

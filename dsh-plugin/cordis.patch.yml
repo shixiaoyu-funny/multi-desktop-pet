@@ -1,0 +1,6 @@
+# role2 pet bundle: inserts one row that mounts both halves.
+# The host half serves the WebM action assets and projects session activity;
+# the client half renders the floating pet inside the DSH web page.
+- insert:
+    - id: role2-pet
+      name: '@local/role2-pet'

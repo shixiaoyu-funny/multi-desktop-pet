@@ -1,0 +1,62 @@
+/* 透明舞台 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+}
+
+/* 两层视频叠放，靠 opacity 交叉淡入切换 */
+.pet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 512px;
+  height: 512px;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  object-fit: contain;
+  background: transparent;
+  will-change: opacity;
+}
+
+.pet.on {
+  opacity: 1;
+}
+
+body.dragging .pet {
+  cursor: grabbing;
+}
+
+/* 首次提示气泡 */
+#hint {
+  position: fixed;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(16, 18, 24, 0.78);
+  color: #e8ecf5;
+  font: 13px/1.2 "Microsoft YaHei", system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+#hint.show {
+  opacity: 1;
+}

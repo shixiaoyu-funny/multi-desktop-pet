@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>role2 工具箱</title>
+  <link rel="stylesheet" href="toolbox.css" />
+</head>
+<body>
+  <header class="tb-head">
+    <div class="tb-title">role2 桌宠 · 工具箱</div>
+    <div class="tb-meta" id="meta">正在连接桌宠…</div>
+  </header>
+
+  <main class="tb-body">
+    <section class="tb-col tb-col-pool">
+      <div class="tb-label">待机动作池</div>
+      <div class="pool" id="pool"></div>
+
+      <div class="tb-sep"></div>
+      <div class="row" id="rowRandom">
+        <span>随机切换动作</span>
+        <button class="sw" data-toggle="random" title="开/关"><i></i></button>
+      </div>
+      <div class="tb-label">切换间隔</div>
+      <div class="seg">
+        <button data-interval="15">15s</button>
+        <button data-interval="30">30s</button>
+        <button data-interval="60">60s</button>
+      </div>
+    </section>
+
+    <section class="tb-col">
+      <div class="tb-label">大小</div>
+      <div class="seg">
+        <button data-size="large">大</button>
+        <button data-size="medium">中</button>
+        <button data-size="small">小</button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="row" id="rowTop">
+        <span>窗口置顶</span>
+        <button class="sw" data-toggle="top"><i></i></button>
+      </div>
+      <div class="row" id="rowSnap">
+        <span>坐在窗口边缘</span>
+        <button class="sw" data-toggle="snap"><i></i></button>
+      </div>
+      <div class="row" id="rowGravity">
+        <span>重力掉落<em id="gravityNote"></em></span>
+        <button class="sw" data-toggle="gravity"><i></i></button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="row">
+        <span>开发者选项</span>
+        <button class="sw" id="btnDev"><i></i></button>
+      </div>
+
+      <div class="tb-spacer"></div>
+      <button class="danger" id="btnQuit">退出桌宠</button>
+    </section>
+  </main>
+
+  <div class="dev hidden" id="devPanel">
+    <div class="dev-head">
+      <span>开发者选项 · 动作缩放</span>
+      <button class="dev-close" id="devClose" title="关闭">×</button>
+    </div>
+    <div class="dev-rows" id="devRows"></div>
+    <div class="dev-actions">
+      <button data-devall="1">全部复位</button>
+      <button data-devcopy="1">复制数值</button>
+    </div>
+    <div class="dev-tip">拖动滑杆实时生效，数值会自动记住</div>
+  </div>
+
+  <script src="toolbox.js"></script>
+</body>
+</html>
