@@ -95,7 +95,10 @@ cargo build
 ```
 Desktop_Pet/
 ├── 启动桌宠.bat               # 一键编译 + 启动（Windows）
-├── 可选功能.md                # 后续功能规划（非实现说明）
+├── 同步到DSH.bat              # 把插件代码与素材同步到 DSH 的部署副本
+├── 可选功能.md                # 功能路线与现状对照（✅/⚠️/□）
+├── tools/
+│   └── sync-plugin.ps1        # 上者调用的同步脚本（镜像 + 漂移检查）
 ├── src/                       # 前端（编译时嵌入 exe）
 │   ├── index.html             # 桌宠窗口
 │   ├── main.js                # 桌宠控制器（动作/姿态/缩放/通信）
@@ -518,6 +521,21 @@ cargo run --bin winscan
 ### `get_debug` 命令
 
 前端可通过 `invoke('get_debug')` 拿到当前模式、吸附半径、接触点（`offY` / `charH`）、宿主信息，以及 `win::list_windows_debug` 给出的「每个窗口被接受/拒绝的原因」（`not_visible` / `maximized(...)` / `too_small(...)` / `tool_window` 等）。只在该命令被调用时执行，不影响正常轮询。
+
+### 版本管理与插件同步
+
+仓库已用 git 管理（`main` 分支），`src-tauri/target/` 与构建中间产物已 ignore。改坏了直接 `git diff` / `git checkout --` 回滚。
+
+桌面版与 DSH 网页版共用同一套动作素材，但**部署出去的是两份**：仓库里的 `dsh-plugin/` 只有代码，素材唯一真源是 `src/assets/`，运行时副本在 `default-workspace\role2-pet-plugin`（DSH profile 用 `link:` 指向它）。
+
+改完插件或素材后，必须跑一次同步，否则网页版还是旧内容：
+
+```powershell
+.\同步到DSH.bat            # 覆盖部署副本
+.\同步到DSH.bat -CheckOnly # 只看有没有漂移（有差异退出码 1）
+```
+
+同步脚本会镜像 `dsh-plugin/` 的代码文件与 `src/assets/` 的全部素材，并删掉部署目录里源中已不存在的多余素材。插件代码改动由 DSH 热重载，素材改动刷新页面即可。
 
 ---
 

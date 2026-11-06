@@ -50,12 +50,21 @@ plugin_manager install_bundle → 目标：C:\Users\Lenovo\Documents\deepseek-ha
 | `index.js` | 宿主半区：`/role2-pet/assets/*` 视频路由（Range/206）、会话活动投影、SSE 推送 |
 | `client.js` | 客户端半区：`shell.overlay` 悬浮桌宠、动作状态机、比例/偏移、拖拽/菜单/气泡 |
 | `cordis.patch.yml` | 插入插件行 |
-| `assets/` | 动作视频与 `manifest.json`（自包含） |
+| `assets/` | 动作视频与 `manifest.json`（**部署时才存在**，见下） |
 | `locale/` | 插件列表里的标题/描述 |
 | `icon.svg` | 插件图标 |
+
+## 素材从哪来
+
+`dsh-plugin/` 本身**不含**视频——素材的唯一真源是仓库根目录的 `src/assets/`（桌面版与插件共用同一套动作与 `manifest.json`）。宿主半区的 `index.js` 在启动时按顺序找两个位置：
+
+1. `<插件目录>/assets/`（部署后的常规位置）；
+2. `<插件目录>/../src/assets/`（直接从本仓库跑时的兜底）。
+
+所以从本仓库安装前，先运行根目录的 `同步到DSH.bat`（即 `tools/sync-plugin.ps1`），它会把插件代码与 `src/assets/` 镜像到部署目录。否则 `/role2-pet/assets/*` 会返回 503。
 
 ## 说明
 
 - 视频路由仅允许本机回环访问。
 - 客户端声明为 `immediately: false`：即使客户端模块出错，也只影响桌宠本身，不会阻塞 DSH 的 Web boot。
-- 更换动作素材后，更新 `assets/manifest.json` 的 `scale`/`offset` 即可，无需改客户端代码。
+- 更换动作素材后，更新 `src/assets/manifest.json` 的 `scale`/`offset` 并重新同步即可，无需改客户端代码。
