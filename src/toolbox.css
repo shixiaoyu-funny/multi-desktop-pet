@@ -767,3 +767,811 @@ body {
   line-height: 1.45;
   word-break: break-all;
 }
+
+/* ==========================================================================
+   Raven 工具箱 · 黑 → 黑红渐变主题
+   仅覆盖外观；所有控件 ID / 事件绑定保持不变。
+   ========================================================================== */
+
+:root {
+  --bg: #070609;
+  --bg2: #10090d;
+  --line: rgba(255, 91, 111, 0.16);
+  --fg: #f4e9eb;
+  --dim: #a5858c;
+  --dim2: #7b6068;
+  --accent: #ff4f64;
+  --accent2: #d52d47;
+  --panel: rgba(255, 255, 255, 0.025);
+  --text: #eadadd;
+}
+
+html,
+body {
+  background: #070609;
+  color: var(--fg);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+body {
+  position: relative;
+  background:
+    radial-gradient(900px 560px at 88% -12%, rgba(188, 25, 48, 0.26), transparent 62%),
+    radial-gradient(700px 440px at 2% 112%, rgba(115, 14, 31, 0.24), transparent 60%),
+    linear-gradient(135deg, #050507 0%, #0d070a 46%, #1b090e 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 50% 118%, rgba(218, 31, 61, 0.15), transparent 56%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.012) 0 1px, transparent 1px 8px);
+  opacity: 0.8;
+}
+
+.tb-head,
+.tb-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- 顶栏 ---------- */
+.tb-head {
+  flex: none;
+  padding: 18px 24px 15px;
+  border-bottom: 1px solid rgba(255, 86, 107, 0.2);
+  background: linear-gradient(180deg, rgba(13, 8, 11, 0.94), rgba(13, 8, 11, 0.62));
+  backdrop-filter: blur(18px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.24);
+}
+
+.tb-title {
+  color: #f8edf0;
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-shadow: 0 0 22px rgba(255, 76, 101, 0.22);
+}
+
+.tb-title::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 10px;
+  border-radius: 50%;
+  vertical-align: 2px;
+  background: #ff4f64;
+  box-shadow: 0 0 9px #ff4f64, 0 0 22px rgba(255, 49, 82, 0.65);
+}
+
+.tb-head-actions {
+  gap: 10px;
+}
+
+.affinity-badge {
+  padding: 7px 12px;
+  border: 1px solid rgba(255, 105, 123, 0.28);
+  background: rgba(140, 24, 42, 0.18);
+  color: #e8b4bd;
+  border-radius: 999px;
+  font-size: 11px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.affinity-badge.hostile {
+  border-color: rgba(255, 82, 98, 0.58);
+  background: rgba(198, 29, 51, 0.22);
+  color: #ff7f8d;
+}
+
+.affinity-badge.cold {
+  border-color: rgba(210, 96, 113, 0.42);
+  background: rgba(102, 24, 38, 0.22);
+  color: #e8a7b2;
+}
+
+.affinity-badge.warming {
+  border-color: rgba(255, 119, 137, 0.52);
+  background: rgba(160, 33, 54, 0.22);
+  color: #ff9eac;
+}
+
+.affinity-badge.close {
+  border-color: rgba(255, 158, 176, 0.6);
+  background: rgba(184, 42, 68, 0.24);
+  color: #ffc0cb;
+}
+
+.chat-entry {
+  padding: 8px 14px;
+  border: 1px solid rgba(255, 104, 124, 0.36);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(177, 31, 55, 0.5), rgba(92, 14, 30, 0.6));
+  color: #ffe5e9;
+  font-weight: 600;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.06), 0 8px 20px rgba(0, 0, 0, 0.2);
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.chat-entry:hover {
+  background: linear-gradient(135deg, rgba(211, 49, 72, 0.62), rgba(120, 19, 37, 0.72));
+  border-color: rgba(255, 139, 154, 0.62);
+  transform: translateY(-1px);
+}
+
+/* ---------- 主体两栏 ---------- */
+.tb-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  background: transparent;
+}
+
+.tb-col {
+  flex: 1;
+  min-width: 0;
+  padding: 22px 20px;
+  overflow-y: auto;
+  background: transparent;
+}
+
+.tb-col-pool {
+  flex: none;
+  width: 270px;
+  border-right: 1px solid rgba(255, 86, 107, 0.14);
+  background: linear-gradient(180deg, rgba(255, 74, 99, 0.035), transparent 72%);
+}
+
+.tb-col-settings {
+  padding: 22px 26px 18px;
+}
+
+.tb-label {
+  margin: 0 0 10px;
+  color: #9f7a82;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+}
+
+.tb-col-pool .tb-label:not(:first-child) {
+  margin-top: 20px;
+}
+
+.tb-sep {
+  height: 1px;
+  margin: 16px 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 88, 109, 0.28), transparent);
+}
+
+.tb-spacer {
+  flex: 1;
+  min-height: 10px;
+}
+
+/* ---------- 姿态按钮 ---------- */
+.pool {
+  gap: 7px;
+}
+
+.pool-group-head {
+  margin: 0 0 6px 2px;
+  color: #8a6870;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.pool-set {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pool-set .act:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
+.act {
+  min-height: 42px;
+  padding: 8px 6px;
+  border: 1px solid rgba(255, 91, 111, 0.2);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.038), rgba(255, 255, 255, 0.012));
+  color: #d9c5ca;
+  font-size: 12.5px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.act:hover {
+  border-color: rgba(255, 109, 127, 0.48);
+  background: rgba(255, 85, 107, 0.11);
+  color: #fff1f3;
+}
+
+.act.on {
+  border-color: rgba(255, 123, 140, 0.66);
+  background: linear-gradient(135deg, rgba(190, 38, 62, 0.72), rgba(91, 15, 30, 0.78));
+  color: #fff5f7;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.1), 0 8px 20px rgba(108, 11, 29, 0.25);
+}
+
+.act-one {
+  border-style: dashed;
+  color: #b9969d;
+}
+
+.act-one:hover {
+  border-color: rgba(255, 135, 150, 0.5);
+}
+
+.act-one.on {
+  border-color: rgba(255, 135, 150, 0.62);
+  background: rgba(160, 38, 58, 0.24);
+  color: #ffd7dd;
+}
+
+/* ---------- 行 / 开关 ---------- */
+.row {
+  min-height: 34px;
+  padding: 8px 0;
+}
+
+.row > span {
+  color: #d8c7cb;
+  font-size: 12.5px;
+}
+
+.row em {
+  color: #8f6c74;
+  font-size: 10px;
+}
+
+.sw {
+  width: 42px;
+  height: 23px;
+  border: 1px solid rgba(255, 103, 121, 0.2);
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.sw i {
+  top: 2px;
+  left: 2px;
+  width: 17px;
+  height: 17px;
+  background: #b9a5aa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.sw.on {
+  border-color: rgba(255, 128, 143, 0.76);
+  background: linear-gradient(90deg, #8c1d31, #e23b53);
+  box-shadow: 0 0 15px rgba(225, 47, 75, 0.25);
+}
+
+.sw.on i {
+  transform: translateX(19px);
+  background: #fff7f8;
+}
+
+.row.disabled .sw i {
+  background: #6f5a60;
+}
+
+/* ---------- 大小分段 ---------- */
+.seg {
+  gap: 8px;
+}
+
+.seg button {
+  padding: 11px 0;
+  border: 1px solid rgba(255, 91, 111, 0.2);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01));
+  color: #d9c5ca;
+  font-size: 12.5px;
+  transition: background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.seg button:hover {
+  border-color: rgba(255, 113, 131, 0.45);
+  background: rgba(255, 83, 106, 0.1);
+  color: #fff3f5;
+}
+
+.seg button.on {
+  border-color: rgba(255, 132, 147, 0.64);
+  background: linear-gradient(135deg, rgba(190, 35, 59, 0.72), rgba(96, 15, 31, 0.8));
+  color: #fff7f8;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.09), 0 8px 20px rgba(102, 12, 30, 0.22);
+}
+
+/* ---------- 切换间隔 ---------- */
+.interval-slider {
+  padding: 3px 2px 0;
+}
+
+.interval-slider input[type="range"] {
+  width: 100%;
+  height: 4px;
+  accent-color: #ef4058;
+  cursor: pointer;
+}
+
+.interval-ticks {
+  margin-top: 9px;
+}
+
+.interval-ticks button {
+  padding: 2px 0;
+  color: #98757d;
+  font-size: 11px;
+}
+
+.interval-ticks button:hover {
+  color: #ead8dc;
+}
+
+.interval-ticks button.on {
+  color: #ff91a2;
+  font-weight: 600;
+  text-shadow: 0 0 12px rgba(255, 78, 103, 0.3);
+}
+
+/* ---------- 喝奶茶卡片 ---------- */
+.milk-tea-card {
+  flex: none;
+  margin: 20px 0 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 112, 131, 0.3);
+  border-radius: 16px;
+  background:
+    radial-gradient(420px 120px at 96% 0%, rgba(255, 107, 126, 0.2), transparent 66%),
+    linear-gradient(135deg, rgba(126, 24, 43, 0.62), rgba(42, 9, 17, 0.84));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.07),
+    0 14px 30px rgba(0, 0, 0, 0.28),
+    0 0 28px rgba(157, 22, 45, 0.08);
+}
+
+.milk-tea-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 18px 8px;
+  border: 0;
+  background: transparent;
+  color: #fff0f3;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.milk-tea-name {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.milk-tea-btn em {
+  color: #ffc2cb;
+  font-size: 12px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.milk-tea-btn:hover .milk-tea-name {
+  color: #ffffff;
+  text-shadow: 0 0 16px rgba(255, 113, 132, 0.45);
+}
+
+.milk-tea-btn:disabled {
+  cursor: default;
+}
+
+.milk-tea-btn:disabled .milk-tea-name {
+  color: #cf9ba4;
+}
+
+.milk-tea-btn.busy .milk-tea-name {
+  color: #ffb3bf;
+}
+
+.milk-tea-note {
+  margin: 0;
+  padding: 0 18px 15px;
+  color: #b0828b;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+/* ---------- 退出 ---------- */
+.danger {
+  margin-top: 12px;
+  padding: 9px 0;
+  border: 1px solid rgba(255, 92, 108, 0.3);
+  border-radius: 10px;
+  background: rgba(142, 22, 39, 0.12);
+  color: #ff9caa;
+  font-size: 12px;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.danger:hover {
+  background: rgba(182, 31, 52, 0.22);
+  border-color: rgba(255, 110, 127, 0.5);
+}
+
+/* ---------- 滚动条 ---------- */
+.tb-col::-webkit-scrollbar,
+.dev-list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.tb-col::-webkit-scrollbar-thumb,
+.dev-list::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 99px;
+  background: rgba(255, 105, 123, 0.26);
+  background-clip: padding-box;
+}
+
+.tb-col::-webkit-scrollbar-thumb:hover,
+.dev-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 124, 141, 0.42);
+  background-clip: padding-box;
+}
+
+/* ---------- 开发者面板 ---------- */
+.dev {
+  background:
+    radial-gradient(700px 420px at 95% -10%, rgba(175, 25, 46, 0.18), transparent 60%),
+    linear-gradient(135deg, #080609, #150a0f);
+  backdrop-filter: blur(16px);
+}
+
+.dev-head {
+  color: #f1dfe3;
+  border-bottom-color: rgba(255, 91, 111, 0.18);
+}
+
+.dev-head b {
+  color: #ff7a8d;
+}
+
+.dev-close:hover {
+  background: rgba(255, 83, 104, 0.15);
+  color: #fff;
+}
+
+.dev-chip {
+  border-color: rgba(255, 91, 111, 0.18);
+  color: #c2a6ac;
+}
+
+.dev-chip:hover {
+  border-color: rgba(255, 121, 138, 0.45);
+  color: #ffe9ed;
+}
+
+.dev-chip.on {
+  border-color: rgba(255, 128, 144, 0.62);
+  background: rgba(164, 31, 52, 0.28);
+  color: #ffd9df;
+}
+
+.dev-snap-size button {
+  border-color: rgba(255, 91, 111, 0.18);
+  color: #bda1a7;
+}
+
+.dev-snap-size button.on {
+  border-color: rgba(255, 128, 144, 0.62);
+  background: rgba(164, 31, 52, 0.28);
+  color: #ffd9df;
+}
+
+.dev-slider input {
+  accent-color: #ef4058;
+}
+
+.dev-slider b {
+  color: #ff8497;
+}
+
+.dev-actions button {
+  border-color: rgba(255, 91, 111, 0.18);
+  color: #d8c2c7;
+}
+
+.dev-actions button:hover {
+  background: rgba(255, 81, 103, 0.13);
+}
+
+.dev-tip {
+  color: #866970;
+}
+
+/* ---------- 与 Suki 工具箱对齐：结构 / 文案 / 间距 ---------- */
+.tb-title::before {
+  content: none;
+}
+
+.tb-col-pool {
+  width: 280px;
+}
+
+.tb-body > .tb-col:last-child {
+  padding: 22px 24px 18px;
+}
+
+.milk-tea-box {
+  flex: none;
+  margin: 20px 0 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 112, 131, 0.3);
+  border-radius: 16px;
+  background:
+    radial-gradient(420px 120px at 96% 0%, rgba(255, 107, 126, 0.2), transparent 66%),
+    linear-gradient(135deg, rgba(126, 24, 43, 0.62), rgba(42, 9, 17, 0.84));
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.07),
+    0 14px 30px rgba(0, 0, 0, 0.28),
+    0 0 28px rgba(157, 22, 45, 0.08);
+}
+
+.milk-tea {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 17px 18px 7px;
+  border: 0;
+  background: transparent;
+  color: #fff0f3;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.milk-tea span {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.milk-tea em {
+  color: #ffc2cb;
+  font-size: 12px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.milk-tea:hover span {
+  color: #ffffff;
+  text-shadow: 0 0 16px rgba(255, 113, 132, 0.45);
+}
+
+.milk-tea:disabled {
+  cursor: default;
+}
+
+.milk-tea:disabled span {
+  color: #cf9ba4;
+}
+
+.milk-tea.busy span {
+  color: #ffb3bf;
+}
+
+.milk-tea-box small {
+  display: block;
+  padding: 0 18px 15px;
+  color: #b0828b;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+/* ---------- 涓?Suki 缁熶竴瀹瑰櫒锛?00脳400 / 绱у噾灏哄 ---------- */
+.tb-head {
+  padding: 11px 16px 9px;
+}
+
+.tb-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 18px rgba(255, 76, 101, 0.2);
+}
+
+.affinity-badge {
+  padding: 6px 9px;
+  font-size: 11px;
+}
+
+.chat-entry {
+  padding: 7px 12px;
+  border-radius: 8px;
+}
+
+.tb-col {
+  padding: 12px 14px;
+}
+
+.tb-col-pool {
+  width: 236px;
+}
+
+.tb-body > .tb-col:last-child {
+  padding: 12px 14px;
+}
+
+.tb-label {
+  margin: 2px 0 7px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+}
+
+.tb-col-pool .tb-label:not(:first-child) {
+  margin-top: 10px;
+}
+
+.tb-sep {
+  margin: 10px 0;
+}
+
+.pool {
+  gap: 5px;
+}
+
+.pool-set {
+  gap: 5px;
+}
+
+.pool-group-head {
+  margin: 0 0 5px 2px;
+  font-size: 10.5px;
+}
+
+.act {
+  min-height: 0;
+  padding: 6px 4px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.row {
+  min-height: 0;
+  padding: 6px 2px;
+}
+
+.row > span {
+  font-size: 12.5px;
+}
+
+.sw {
+  width: 38px;
+  height: 21px;
+}
+
+.sw i {
+  width: 15px;
+  height: 15px;
+}
+
+.sw.on i {
+  transform: translateX(17px);
+}
+
+.seg {
+  gap: 5px;
+}
+
+.seg button {
+  padding: 7px 0;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+.interval-slider {
+  padding: 2px 2px 0;
+}
+
+.interval-ticks {
+  margin-top: 2px;
+}
+
+.interval-ticks button {
+  font-size: 11px;
+}
+
+.milk-tea-box {
+  margin: 10px 0 0;
+  padding: 10px;
+  border-radius: 12px;
+}
+
+.milk-tea {
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 128, 146, 0.35);
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(188, 48, 74, 0.72), rgba(105, 22, 40, 0.76) 55%, rgba(58, 12, 24, 0.82));
+}
+
+.milk-tea span {
+  font-size: 13px;
+}
+
+.milk-tea-badge {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.milk-tea-box small {
+  margin-top: 6px;
+  padding: 0;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.danger {
+  margin-top: 0;
+  padding: 8px 0;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.tb-spacer {
+  min-height: 8px;
+}
+
+/* 防止 600×400 下右侧行被 flex 压缩成重叠 */
+.tb-col > * {
+  flex-shrink: 0;
+}
+
+.tb-spacer {
+  flex: 1 0 auto;
+}
+
+.row {
+  min-height: 29px;
+  padding: 5px 2px;
+}
+
+.milk-tea-box {
+  margin-top: 8px;
+  padding: 8px;
+}
+
+.milk-tea {
+  padding: 7px 10px;
+}
+
+.milk-tea-box small {
+  margin-top: 3px;
+}
+
+/* Suki 工具箱不显示可见滚动条；滚轮仍可滚动到底部退出按钮 */
+.tb-col {
+  scrollbar-width: none;
+}
+
+.tb-col::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}

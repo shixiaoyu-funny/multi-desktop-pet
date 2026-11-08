@@ -118,11 +118,7 @@ function renderMilkTea() {
   if (label) label.textContent = `今日 ${milkTeaCount}/${milkTeaLimit}`
   if (button) {
     button.disabled = milkTeaBusy || milkTeaCount >= milkTeaLimit
-    button.textContent = milkTeaBusy
-      ? '她正在喝…'
-      : milkTeaCount >= milkTeaLimit
-        ? '明天再来'
-        : '请她喝'
+    button.classList.toggle('busy', milkTeaBusy)
   }
 }
 
@@ -142,14 +138,10 @@ async function drinkMilkTea() {
   milkTeaBusy = true
   renderMilkTea()
   const note = $('#milkTeaNote')
-  if (note) note.textContent = '正在倒奶茶…'
   try {
     const result = await invoke('drink_milk_tea')
     if (typeof result.count === 'number') milkTeaCount = result.count
     if (typeof result.limit === 'number') milkTeaLimit = result.limit
-    if (note && typeof result.delta === 'number') {
-      note.textContent = `她收下了，好感 +${result.delta}`
-    }
     renderMilkTea()
   } catch (error) {
     if (note) note.textContent = String(error).includes('两次')
