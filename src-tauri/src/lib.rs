@@ -796,6 +796,30 @@ const TOOLBOX_H: f64 = 400.0;
 
 /// 打开（或唤到前面）工具箱窗口。
 /// 窗口关掉就是销毁，所以这里"有就显示、没有才创建"——不常驻，省一份 WebView2 内存。
+/// 第二个实例启动时，只在第一个实例里弹出提示；第二个实例由插件直接退出。
+#[cfg(windows)]
+fn show_single_instance_warning(_app: &AppHandle) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        MessageBoxW, MB_ICONWARNING, MB_OK, MB_SETFOREGROUND, MB_TOPMOST,
+    };
+
+    let message: Vec<u16> = "本小姐一个人还不够陪你，你还有再开几个？？！\0"
+        .encode_utf16()
+        .collect();
+    let title: Vec<u16> = "Raven\0".encode_utf16().collect();
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            message.as_ptr(),
+            title.as_ptr(),
+            MB_OK | MB_ICONWARNING | MB_TOPMOST | MB_SETFOREGROUND,
+        );
+    }
+}
+
+#[cfg(not(windows))]
+fn show_single_instance_warning(_app: &AppHandle) {}
+
 fn show_toolbox(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(TOOLBOX_LABEL) {
         let _ = w.unminimize();
@@ -1426,6 +1450,9 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_single_instance_warning(app);
+        }))
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
