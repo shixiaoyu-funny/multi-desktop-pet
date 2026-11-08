@@ -37,6 +37,85 @@ body {
   padding: 11px 16px 9px;
   border-bottom: 1px solid var(--line);
   background: var(--bg2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tb-head-text {
+  min-width: 0;
+}
+
+.tb-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.affinity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #cdd4e2;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.affinity-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.affinity-badge.hostile {
+  border-color: rgba(255, 92, 92, 0.55);
+  background: rgba(255, 92, 92, 0.14);
+  color: #ff7a7a;
+}
+
+.affinity-badge.cold {
+  border-color: rgba(86, 158, 255, 0.55);
+  background: rgba(86, 158, 255, 0.14);
+  color: #7fb4ff;
+}
+
+.affinity-badge.warming {
+  border-color: rgba(95, 214, 164, 0.55);
+  background: rgba(95, 214, 164, 0.14);
+  color: #7de7b8;
+}
+
+.affinity-badge.close {
+  border-color: rgba(255, 126, 191, 0.58);
+  background: rgba(255, 126, 191, 0.15);
+  color: #ff9dcc;
+}
+
+.chat-entry {
+  flex: none;
+  border: 1px solid rgba(224, 69, 90, 0.45);
+  background: rgba(224, 69, 90, 0.14);
+  color: #ffc3cc;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chat-entry:hover {
+  background: rgba(224, 69, 90, 0.24);
+  color: #fff;
 }
 
 .tb-title {
@@ -289,6 +368,42 @@ body {
   color: #7de7b8;
 }
 
+/* ———————————— 三档间隔滑块 ———————————— */
+.interval-slider {
+  padding: 2px 2px 0;
+}
+
+.interval-slider input[type='range'] {
+  width: 100%;
+  accent-color: #7de7b8;
+  cursor: pointer;
+}
+
+.interval-ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 2px;
+}
+
+.interval-ticks button {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: #8e98aa;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.interval-ticks button:hover {
+  color: #cdd4e2;
+}
+
+.interval-ticks button.on {
+  color: #7de7b8;
+  font-weight: 600;
+}
+
 /* ———————————— 退出 ———————————— */
 .danger {
   flex: none;
@@ -348,6 +463,132 @@ body {
 .dev-close:hover {
   background: rgba(255, 255, 255, 0.1);
   color: var(--fg);
+}
+
+.dev-head b {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* DSH 风格：动作分组 + 选中动作的缩放/偏移滑杆 */
+.dev-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 2px 4px;
+  scrollbar-width: thin;
+}
+
+.dev-group {
+  margin-bottom: 7px;
+}
+
+.dev-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: var(--dim2);
+  font-size: 10.5px;
+}
+
+.dev-group-title span {
+  color: var(--dim);
+  font-size: 9.5px;
+}
+
+.dev-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dev-chip {
+  padding: 4px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #aeb8cb;
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.dev-chip:hover {
+  border-color: rgba(95, 214, 164, 0.35);
+  color: #dff8ec;
+}
+
+.dev-chip.on {
+  border-color: var(--accent);
+  background: rgba(95, 214, 164, 0.16);
+  color: #a3f0d0;
+}
+
+.dev-controls {
+  flex: none;
+  padding: 8px 2px 2px;
+  border-top: 1px solid var(--line);
+}
+
+.dev-snap-size {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0 0 4px;
+}
+
+.dev-snap-size span {
+  margin-right: 3px;
+  color: var(--dim2);
+  font-size: 10px;
+}
+
+.dev-snap-size button {
+  padding: 2px 9px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #9aa4ba;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.dev-snap-size button.on {
+  border-color: var(--accent);
+  background: rgba(95, 214, 164, 0.16);
+  color: #a3f0d0;
+}
+
+.dev-slider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.dev-slider span {
+  width: 30px;
+  flex: none;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.dev-slider input {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: ew-resize;
+}
+
+.dev-slider b {
+  width: 58px;
+  flex: none;
+  text-align: right;
+  color: var(--accent);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .dev-rows {

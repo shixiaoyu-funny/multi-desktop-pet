@@ -20,7 +20,11 @@
           "file": "assets/idle/站姿待机.webm",
           "fps": 60,
           "frames": 178,
-          "duration": 2.9667
+          "duration": 2.9667,
+          "ambient": true,
+          "offset": 0,
+          "loop": true,
+          "playable": true
         },
         {
           "id": "stand_flower",
@@ -30,7 +34,11 @@
           "file": "assets/idle/站姿鲜花.webm",
           "fps": 60,
           "frames": 178,
-          "duration": 2.9667
+          "duration": 2.9667,
+          "ambient": false,
+          "offset": 0,
+          "loop": true,
+          "playable": true
         },
         {
           "id": "stand_phone",
@@ -40,7 +48,11 @@
           "file": "assets/idle/站姿手机.webm",
           "fps": 60,
           "frames": 178,
-          "duration": 2.9667
+          "duration": 2.9667,
+          "ambient": false,
+          "offset": 0,
+          "loop": true,
+          "playable": true
         },
         {
           "id": "stand_book",
@@ -50,7 +62,11 @@
           "file": "assets/idle/站姿书籍.webm",
           "fps": 60,
           "frames": 178,
-          "duration": 2.9667
+          "duration": 2.9667,
+          "ambient": false,
+          "offset": 0,
+          "loop": true,
+          "playable": true
         },
         {
           "id": "sit_idle",
@@ -58,23 +74,205 @@
           "posture": "sit",
           "sitKind": "upright",
           "scale": 0.875,
-          "offset": 12.8,
+          "offset": 13.5,
           "file": "assets/idle/正坐待机.webm",
           "fps": 60,
           "frames": 178,
-          "duration": 2.9667
+          "duration": 2.9667,
+          "ambient": true,
+          "loop": true,
+          "playable": true
         },
         {
           "id": "sit_lean",
           "label": "侧坐单手撑",
           "posture": "sit",
           "sitKind": "side",
-          "scale": 0.875,
-          "offset": 12.8,
+          "scale": 0.876,
+          "offset": 13.9,
           "file": "assets/idle/侧坐单手撑.webm",
           "fps": 60,
           "frames": 178,
-          "duration": 2.9667
+          "duration": 2.9667,
+          "ambient": true,
+          "loop": true,
+          "playable": true
+        },
+        {
+          "id": "stand_wipe",
+          "label": "站姿擦汗",
+          "posture": "stand",
+          "scale": 0.995,
+          "file": "assets/oneshot/站姿擦汗.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "stand_hair",
+          "label": "站姿撩头发",
+          "posture": "stand",
+          "scale": 0.995,
+          "file": "assets/oneshot/站姿撩头发.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "stand_angry",
+          "label": "站姿生气",
+          "posture": "stand",
+          "scale": 0.995,
+          "file": "assets/oneshot/站姿生气.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "stand_giggle",
+          "label": "站姿捂嘴笑",
+          "posture": "stand",
+          "scale": 0.995,
+          "file": "assets/oneshot/站姿捂嘴笑.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_wipe",
+          "label": "正坐擦汗",
+          "posture": "sit",
+          "sitKind": "upright",
+          "scale": 1.001,
+          "offset": 0.5,
+          "file": "assets/oneshot/正坐擦汗.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_hair",
+          "label": "正坐撩头发",
+          "posture": "sit",
+          "sitKind": "upright",
+          "scale": 1.001,
+          "offset": 0.5,
+          "file": "assets/oneshot/正坐撩头发.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_angry",
+          "label": "正坐生气",
+          "posture": "sit",
+          "sitKind": "upright",
+          "scale": 1.001,
+          "offset": 0.5,
+          "file": "assets/oneshot/正坐生气.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_giggle",
+          "label": "正坐捂嘴笑",
+          "posture": "sit",
+          "sitKind": "upright",
+          "scale": 1.001,
+          "offset": 0.5,
+          "file": "assets/oneshot/正坐捂嘴笑.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_side_wipe",
+          "label": "侧坐擦汗",
+          "posture": "sit",
+          "sitKind": "side",
+          "scale": 1.018,
+          "offset": -0.5,
+          "ambient": false,
+          "file": "assets/oneshot/侧坐擦汗.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_side_hair",
+          "label": "侧坐撩头发",
+          "posture": "sit",
+          "sitKind": "side",
+          "scale": 1.017,
+          "offset": -0.5,
+          "ambient": false,
+          "file": "assets/oneshot/侧坐撩头发.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_side_angry",
+          "label": "侧坐生气",
+          "posture": "sit",
+          "sitKind": "side",
+          "scale": 1.018,
+          "offset": -0.5,
+          "ambient": false,
+          "file": "assets/oneshot/侧坐生气.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "loop": false,
+          "playable": true
+        },
+        {
+          "id": "sit_side_giggle",
+          "label": "侧坐捂嘴笑",
+          "posture": "sit",
+          "sitKind": "side",
+          "scale": 1.018,
+          "offset": -0.5,
+          "ambient": false,
+          "file": "assets/oneshot/侧坐捂嘴笑.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "loop": false,
+          "playable": true
         }
       ]
     },
@@ -86,62 +284,86 @@
         {
           "id": "trans_stand_to_upright",
           "label": "站→正坐",
-          "transition": { "from": "stand", "to": "sit_upright" },
+          "transition": {
+            "from": "stand",
+            "to": "sit_upright"
+          },
           "scale": 0.995,
           "file": "assets/trans/过渡_站到正坐.webm",
           "fps": 60,
           "frames": 179,
-          "duration": 2.984
+          "duration": 2.984,
+          "offset": 0
         },
         {
           "id": "trans_stand_to_side",
           "label": "站→侧坐",
-          "transition": { "from": "stand", "to": "sit_side" },
+          "transition": {
+            "from": "stand",
+            "to": "sit_side"
+          },
           "scale": 0.995,
           "file": "assets/trans/过渡_站到侧坐.webm",
           "fps": 60,
           "frames": 179,
-          "duration": 2.984
+          "duration": 2.984,
+          "offset": 0
         },
         {
           "id": "trans_upright_to_stand",
           "label": "正坐→站",
-          "transition": { "from": "sit_upright", "to": "stand" },
+          "transition": {
+            "from": "sit_upright",
+            "to": "stand"
+          },
           "scale": 1,
           "file": "assets/trans/过渡_正坐到站.webm",
           "fps": 60,
           "frames": 179,
-          "duration": 2.984
+          "duration": 2.984,
+          "offset": 0
         },
         {
           "id": "trans_side_to_stand",
           "label": "侧坐→站",
-          "transition": { "from": "sit_side", "to": "stand" },
+          "transition": {
+            "from": "sit_side",
+            "to": "stand"
+          },
           "scale": 1,
           "file": "assets/trans/过渡_侧坐到站.webm",
           "fps": 60,
           "frames": 179,
-          "duration": 2.984
+          "duration": 2.984,
+          "offset": 0
         },
         {
           "id": "trans_side_to_upright",
           "label": "侧坐→正坐",
-          "transition": { "from": "sit_side", "to": "sit_upright" },
+          "transition": {
+            "from": "sit_side",
+            "to": "sit_upright"
+          },
           "scale": 0.995,
           "file": "assets/trans/过渡_侧坐到正坐.webm",
           "fps": 60,
           "frames": 179,
-          "duration": 2.984
+          "duration": 2.984,
+          "offset": 0
         },
         {
           "id": "trans_upright_to_side",
           "label": "正坐→侧坐",
-          "transition": { "from": "sit_upright", "to": "sit_side" },
+          "transition": {
+            "from": "sit_upright",
+            "to": "sit_side"
+          },
           "scale": 0.995,
           "file": "assets/trans/过渡_正坐到侧坐.webm",
           "fps": 60,
           "frames": 179,
-          "duration": 2.984
+          "duration": 2.984,
+          "offset": 0
         }
       ]
     },
@@ -155,12 +377,14 @@
           "label": "正坐慌张挥手",
           "posture": "sit",
           "sitKind": "upright",
-          "scale": 0.88,
-          "offset": 12.8,
-          "file": "assets/idle/正坐慌张挥手.webm",
+          "scale": 0.875,
+          "offset": 12.5,
+          "file": "assets/oneshot/正坐慌张挥手.webm",
           "fps": 60,
           "frames": 178,
-          "duration": 2.967
+          "duration": 2.967,
+          "loop": false,
+          "playable": false
         }
       ]
     }

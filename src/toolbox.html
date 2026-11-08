@@ -2,18 +2,26 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>role2 工具箱</title>
+  <title>Raven 工具箱</title>
   <link rel="stylesheet" href="toolbox.css" />
 </head>
 <body>
   <header class="tb-head">
-    <div class="tb-title">role2 桌宠 · 工具箱</div>
-    <div class="tb-meta" id="meta">正在连接桌宠…</div>
+    <div class="tb-head-text">
+      <div class="tb-title">Raven 桌宠 · 工具箱</div>
+    </div>
+    <div class="tb-head-actions">
+      <div class="affinity-badge cold" id="affinityBadge" title="高冷防备 · 0">
+        <span class="affinity-dot"></span>
+        <span id="affinityText">好感度 0</span>
+      </div>
+      <button class="chat-entry" id="btnChat">AI 聊天</button>
+    </div>
   </header>
 
   <main class="tb-body">
     <section class="tb-col tb-col-pool">
-      <div class="tb-label">待机动作池</div>
+      <div class="tb-label">姿态</div>
       <div class="pool" id="pool"></div>
 
       <div class="tb-sep"></div>
@@ -21,11 +29,18 @@
         <span>随机切换动作</span>
         <button class="sw" data-toggle="random" title="开/关"><i></i></button>
       </div>
+      <div class="row" id="rowTts">
+        <span>语音输出</span>
+        <button class="sw" data-toggle="tts" title="开/关"><i></i></button>
+      </div>
       <div class="tb-label">切换间隔</div>
-      <div class="seg">
-        <button data-interval="15">15s</button>
-        <button data-interval="30">30s</button>
-        <button data-interval="60">60s</button>
+      <div class="interval-slider">
+        <input id="intervalRange" type="range" min="0" max="2" step="1" value="0" aria-label="动作切换间隔" />
+        <div class="interval-ticks">
+          <button data-interval="180">3 分钟</button>
+          <button data-interval="600">10 分钟</button>
+          <button data-interval="900">15 分钟</button>
+        </div>
       </div>
     </section>
 
@@ -54,11 +69,6 @@
 
       <div class="tb-sep"></div>
 
-      <div class="row">
-        <span>开发者选项</span>
-        <button class="sw" id="btnDev"><i></i></button>
-      </div>
-
       <div class="tb-spacer"></div>
       <button class="danger" id="btnQuit">退出桌宠</button>
     </section>
@@ -66,15 +76,52 @@
 
   <div class="dev hidden" id="devPanel">
     <div class="dev-head">
-      <span>开发者选项 · 动作缩放</span>
+      <span>开发者模式 · <b id="devSelectedLabel">站姿待机</b></span>
       <button class="dev-close" id="devClose" title="关闭">×</button>
     </div>
-    <div class="dev-rows" id="devRows"></div>
-    <div class="dev-actions">
-      <button data-devall="1">全部复位</button>
-      <button data-devcopy="1">复制数值</button>
+
+    <div class="dev-list" id="devList"></div>
+
+    <div class="dev-controls">
+      <div class="dev-snap-size">
+        <span>坐线档位</span>
+        <button type="button" data-snap-size="small">小</button>
+        <button type="button" data-snap-size="medium">中</button>
+        <button type="button" data-snap-size="large">大</button>
+      </div>
+      <label class="dev-slider">
+        <span>缩放</span>
+        <input id="devScale" type="range" min="0.5" max="1.2" step="0.001" value="1" />
+        <b id="devScaleVal">1.000</b>
+      </label>
+      <label class="dev-slider">
+        <span>偏移</span>
+        <input id="devOffset" type="range" min="-100" max="100" step="0.1" value="0" />
+        <b id="devOffsetVal">0.0</b>
+      </label>
+      <label class="dev-slider">
+        <span>气泡</span>
+        <input id="devBubble" type="range" min="-400" max="400" step="1" value="0" />
+        <b id="devBubbleVal">0px</b>
+      </label>
+      <label class="dev-slider">
+        <span>正坐</span>
+        <input id="devSnapUpright" type="range" min="-50" max="50" step="1" value="20" />
+        <b id="devSnapUprightVal">+20px</b>
+      </label>
+      <label class="dev-slider">
+        <span>侧坐</span>
+        <input id="devSnapSide" type="range" min="-50" max="50" step="1" value="6" />
+        <b id="devSnapSideVal">+6px</b>
+      </label>
     </div>
-    <div class="dev-tip">拖动滑杆实时生效，数值会自动记住</div>
+
+    <div class="dev-actions">
+      <button id="devReset">复位当前</button>
+      <button id="devAll">全部复位</button>
+      <button id="devCopy">复制全部数值</button>
+    </div>
+    <div class="dev-tip" id="devTip">点动作循环预览；拖滑杆实时生效，数值自动记住</div>
   </div>
 
   <script src="toolbox.js"></script>

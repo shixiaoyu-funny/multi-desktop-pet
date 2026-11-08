@@ -20,6 +20,7 @@
 
 const { invoke } = window.__TAURI__.core
 const { listen, emit } = window.__TAURI__.event
+const TTS_PLAYBACK_RATE = 1.0
 
 // 事件 API 走 ACL 权限，失败时不要留 unhandled rejection
 const safeListen = (name, cb) =>
@@ -54,10 +55,61 @@ let current = null     // 当前正在播的动作（可能是待机 / 过渡 / 
 let layers = []
 let frontIdx = 0
 let switching = false      // 交叉淡入进行中（约 300ms）
+let playToken = 0          // 抢占式播放：旧 play() 的异步结果作废
+const blobUrlCache = new Map()
 let transitioning = false  // 一次性动作（过渡 / 慌张）正在播放（约 3s），期间挡住姿态切换
 let dragging = false
 let randomTimer = null
 let interactive = false
+let aiBusy = false
+let press = null
+let bubbleTimer = null
+let bubbleOffset = 0
+let chatOpen = false
+let ttsAudio = null
+let ttsUrl = null
+
+// 待机动画：随机到这些动作时保持完整间隔；其余动作播一次后回到待机
+const IDLE_ACTIONS = new Set([
+  'stand_idle',
+  'stand_flower',
+  'stand_phone',
+  'stand_book',
+  'sit_idle',
+  'sit_lean',
+])
+
+const INTERACTION_LINES = {
+  head: [
+    '唔…好舒服',
+    '再摸一下嘛',
+    '嘿嘿，头要化了',
+    '轻、轻一点…',
+    '好暖和',
+    '嗯…喜欢',
+    '呼噜呼噜…',
+    '今天也很努力了',
+  ],
+  belly: [
+    '哈哈，别挠！',
+    '痒、痒啦！',
+    '噗…忍不住了',
+    '肚、肚子不行…',
+    '嘻嘻，好痒',
+    '再挠就笑给你看',
+    '哈哈哈，停一下',
+    '笑得肚子疼…',
+  ],
+  leg: [
+    '呀！别碰那里…',
+    '讨厌，腿很敏感啦',
+    '你、你干嘛…',
+    '不、不许摸腿！',
+    '好害羞…',
+    '再摸我要生气了',
+    '哼…色狼',
+  ],
+}
 
 // 每个动作的相对缩放（1 = 铺满容器）。manifest 里的 scale 是出厂值，
 // 工具箱里调过的数值存在 localStorage，优先级更高，方便随调随看。
@@ -101,6 +153,10 @@ async function boot() {
     console.error('[pet] 动作池为空，检查 src/assets/manifest.json')
     return
   }
+  // 慌张动画需要从 0.5s 起播；Tauri 资源协议没有 Range，先转成 Blob，
+  // 让 <video> 具备完整 seekable 区间。启动时预取，落地时不用等。
+  const panicAsset = pool.find((i) => i.id === 'sit_panic')
+  if (panicAsset) blobUrlOf(urlOf(panicAsset)).catch(() => {})
   if (typeof man.groundRatio === 'number') groundRatio = man.groundRatio
 
   // 出厂缩放值来自 manifest；localStorage 里的调参结果覆盖它
@@ -110,6 +166,8 @@ async function boot() {
     scales[item.id] = saved[item.id] != null ? saved[item.id] : base
   }
   offsets = readActionOffsets()
+  bubbleOffset = readBubbleOffset()
+  applyBubbleOffset(bubbleOffset, false)
 
   layers = [document.getElementById('vidA'), document.getElementById('vidB')]
   for (const v of layers) {
@@ -136,6 +194,59 @@ async function boot() {
   safeListen('pet:interactive', (e) => { interactive = !!e.payload })
   safeListen('pet:posture', (e) => { applyPosture(!!(e.payload && e.payload.sit)) })
   safeListen('pet:panic', () => { playPanic() })
+  // AI 聊天返回的动作 / 台词
+  safeListen('pet:ai-action', (e) => {
+    const action = e.payload && e.payload.action
+    if (action) playAiAction(action)
+  })
+  safeListen('pet:ai-reply', (e) => {
+    const text = e.payload && e.payload.text
+    if (text) showBubble(text, 9000)
+  })
+  safeListen('pet:tts-stop', stopTts)
+  safeListen('pet:tts', (e) => {
+    const payload = e.payload || {}
+    if (!payload.base64) return
+    stopTts()
+    try {
+      const binary = atob(payload.base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      ttsUrl = URL.createObjectURL(new Blob([bytes], { type: payload.mime || 'audio/mpeg' }))
+      ttsAudio = new Audio(ttsUrl)
+      ttsAudio.volume = 0.92
+      ttsAudio.preservesPitch = true
+      ttsAudio.playbackRate = TTS_PLAYBACK_RATE
+      ttsAudio.onended = stopTts
+      const ack = () => {
+        if (payload.generation) {
+          invoke('tts_ack', { generation: payload.generation }).catch(() => {})
+        }
+      }
+      ttsAudio.play().then(ack).catch(ack)
+    } catch {
+      stopTts()
+    }
+  })
+  // 主动陪伴：不吃聊天历史，只显示一条临时气泡
+  safeListen('pet:ambient', (e) => {
+    const text = e.payload && e.payload.text
+    if (text && !chatOpen) showAmbientBubble(text)
+  })
+  safeListen('pet:chat-state', (e) => {
+    chatOpen = !!(e.payload && e.payload.open)
+    if (chatOpen) {
+      if (randomTimer) {
+        clearTimeout(randomTimer)
+        randomTimer = null
+      }
+      aiBusy = false
+      settleForChat()
+    } else {
+      scheduleRandom()
+    }
+    broadcastState()
+  })
   // 工具箱刚打开时会主动要一次完整状态
   safeListen('pet:request_state', () => broadcastState())
   // 工具箱发来的操作指令
@@ -151,8 +262,17 @@ async function boot() {
       alwaysOnTop: cfg.alwaysOnTop,
       snap: cfg.snap,
       gravity: cfg.gravity,
+      snapOffsetUprightSmall: cfg.snapOffsetUprightSmall,
+      snapOffsetUprightMedium: cfg.snapOffsetUprightMedium,
+      snapOffsetUprightLarge: cfg.snapOffsetUprightLarge,
+      snapOffsetSideSmall: cfg.snapOffsetSideSmall,
+      snapOffsetSideMedium: cfg.snapOffsetSideMedium,
+      snapOffsetSideLarge: cfg.snapOffsetSideLarge,
       pool: pool.map((i) => i.id),
       scales: { ...scales },
+      offsets: { ...offsets },
+      bubbleOffset,
+      chatOpen,
       videos: layers.map((v, i) => ({
         src: v.getAttribute('src') ? decodeURIComponent(v.getAttribute('src').split('/').pop()) : null,
         readyState: v.readyState,
@@ -189,6 +309,12 @@ function broadcastState() {
       action: cfg.action,
       snap: cfg.snap,
       gravity: cfg.gravity,
+      snapOffsetUprightSmall: cfg.snapOffsetUprightSmall,
+      snapOffsetUprightMedium: cfg.snapOffsetUprightMedium,
+      snapOffsetUprightLarge: cfg.snapOffsetUprightLarge,
+      snapOffsetSideSmall: cfg.snapOffsetSideSmall,
+      snapOffsetSideMedium: cfg.snapOffsetSideMedium,
+      snapOffsetSideLarge: cfg.snapOffsetSideLarge,
     },
     action: current && current.id,
     posture,
@@ -210,7 +336,17 @@ function broadcastState() {
     offsets: { ...offsets },
     containerPx: Math.round(containerCss * (window.devicePixelRatio || 1)),
     dpr: window.devicePixelRatio || 1,
+    agentBusy: aiBusy,
+    bubbleOffset,
+    chatOpen,
   })
+  // 让 Rust 侧的聊天知道当前姿态，用来限制 AI 可选动作
+  invoke('report_posture', {
+    posture,
+    granular,
+    action: current && current.id,
+  }).catch(() => {})
+  invoke('set_sit_kind', { kind: granular }).catch(() => {})
 }
 
 /** 工具箱发来的指令一律在这里落地 */
@@ -219,6 +355,9 @@ function handleCommand(cmd) {
   switch (cmd.type) {
     case 'play':
       playManual(cmd.id)
+      break
+    case 'posture':
+      setPostureTarget(cmd.value)
       break
     case 'preview':
       previewAction(cmd.id)
@@ -241,6 +380,17 @@ function handleCommand(cmd) {
     case 'gravity':
       setGravity(cmd.on)
       break
+    case 'snapOffset': {
+      const kind = cmd.kind === 'side' ? 'side' : 'upright'
+      const size = cmd.size === 'large' ? 'large' : cmd.size === 'medium' ? 'medium' : 'small'
+      const suffix = size.charAt(0).toUpperCase() + size.slice(1)
+      const field = `snapOffset${kind === 'side' ? 'Side' : 'Upright'}${suffix}`
+      const value = Math.round(Math.min(50, Math.max(-50, Number(cmd.value) || 0)))
+      cfg[field] = value
+      invoke('set_snap_offset', { kind, size, value }).catch(() => {})
+      broadcastState()
+      break
+    }
     case 'setScale':
       setActionScale(cmd.id, cmd.value)
       broadcastState()
@@ -257,6 +407,10 @@ function handleCommand(cmd) {
       resetActionOffset(cmd.id)
       broadcastState()
       break
+    case 'bubbleOffset':
+      applyBubbleOffset(cmd.value)
+      broadcastState()
+      break
     default:
       console.warn('[pet] 未知指令', cmd.type)
   }
@@ -266,6 +420,20 @@ function handleCommand(cmd) {
 
 function urlOf(item) {
   return item.file.split('/').map(encodeURIComponent).join('/')
+}
+
+/** 资源协议不支持 Range 时，用整文件 Blob 换来可 seek 的媒体区间。 */
+function blobUrlOf(url) {
+  if (!blobUrlCache.has(url)) {
+    const pending = fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(`fetch ${url}: ${response.status}`)
+        return response.blob()
+      })
+      .then((blob) => URL.createObjectURL(blob))
+    blobUrlCache.set(url, pending)
+  }
+  return blobUrlCache.get(url)
 }
 
 // ————————————————————————— 姿态（站 / 坐） —————————————————————————
@@ -291,10 +459,12 @@ function granularOf(item) {
   return sitKindOf(item) === 'side' ? 'sit_side' : 'sit_upright'
 }
 
-/** 工具箱分组：stand / sit / trans / panic。过渡动画单独成组，慌张单独一组。 */
+/** 工具箱分组：stand / sit / trans / panic。过渡动画单独成组，慌张默认单独一组；
+ * 但“正坐慌张”本身就是正坐动作，归到坐姿里，方便和正坐动作一起调。 */
 function groupOf(item) {
   if (!item) return 'stand'
   if (item.transition) return 'trans'
+  if (item.id === 'sit_panic') return 'sit'
   if (!item.playable) return 'panic'
   return postureOf(item) === 'sit' ? 'sit' : 'stand'
 }
@@ -314,9 +484,12 @@ function pickForPosture(want) {
   return list[(Math.random() * list.length) | 0]
 }
 
-/** 在指定坐姿类型（upright / side）里挑一个待机动作 */
+/** 在指定坐姿类型（upright / side）里挑一个**待机**动作，供慌张结束后回收。
+ * 不能抽擦汗/撩头发/生气/捂嘴笑这些表情动作，否则落地后会莫名其妙自己演一段。 */
 function pickSit(kind) {
-  const same = playablePool.filter((i) => postureOf(i) === 'sit' && sitKindOf(i) === kind)
+  const same = playablePool.filter(
+    (i) => postureOf(i) === 'sit' && sitKindOf(i) === kind && IDLE_ACTIONS.has(i.id)
+  )
   if (!same.length) return null
   const others = same.filter((i) => !current || i.id !== current.id)
   const list = others.length ? others : same
@@ -335,14 +508,18 @@ function pickSitGranular() {
 function switchTo(targetItem, opts = {}) {
   const to = granularOf(targetItem)
   const from = granular
+  const setGranular = (value) => {
+    granular = value
+    posture = value === 'stand' ? 'stand' : 'sit'
+  }
   if (from === to) {
-    granular = to
+    setGranular(to)
     play(targetItem.id, opts)
     return
   }
   const transItem = findTransition(from, to)
   if (!transItem) {
-    granular = to
+    setGranular(to)
     play(targetItem.id, opts)
     return
   }
@@ -353,7 +530,7 @@ function switchTo(targetItem, opts = {}) {
     }
     return
   }
-  granular = to
+  setGranular(to)
   transitioning = true
   // 过渡是中间态：不落盘、不重置随机计时器
   play(transItem.id, {
@@ -383,6 +560,15 @@ function playManual(id, attempt = 0) {
     return
   }
   switchTo(item)
+}
+
+/** 只暴露三个姿态入口：站立 / 正坐 / 侧坐；其他动作保持随机/AI/互动触发。 */
+function setPostureTarget(value) {
+  const target =
+    value === 'stand'
+      ? pickForPosture('stand')
+      : pickSit(value === 'side' ? 'side' : 'upright')
+  if (target) switchTo(target, { force: true })
 }
 
 /**
@@ -425,19 +611,17 @@ function applyPosture(sit, attempt = 0) {
  *  · 选正坐 → 直接维持正坐（慌张本来就是正坐）
  *  · 选侧坐 → 过渡_正坐到侧坐 → 维持侧坐
  */
-function playPanic(attempt = 0) {
+function playPanic() {
   const panicItem = pool.find((i) => i.id === 'sit_panic')
   if (!panicItem) return
-  // 落地瞬间可能正好赶上上一次交叉淡入还没结束，稍等再播
-  if (switching) {
-    if (attempt < 60) setTimeout(() => playPanic(attempt + 1), 80)
-    return
-  }
   posture = 'sit'
   granular = 'sit_upright' // 慌张挥手是正坐姿态
   transitioning = true
+  // 落地瞬间直接抢占当前过渡，从 0.5s 开始、1.2 倍速播；不再等交叉淡入结束。
   play(panicItem.id, {
     force: true,
+    preempt: true,
+    startAt: 0.5,
     silent: true,
     keepTimer: true,
     onEnded: () => {
@@ -519,23 +703,59 @@ async function play(id, opts = {}) {
   const item = pool.find((i) => i.id === id)
   if (!item) return
   if (current && current.id === id && !opts.force) return
-  if (switching) return
+  if (switching && !opts.preempt) return
+  const token = ++playToken
   switching = true
+  if (opts.preempt) {
+    clearOnEnded(layers[0])
+    clearOnEnded(layers[1])
+  }
 
   const cur = layers[frontIdx]
   const nxt = layers[1 - frontIdx]
 
   try {
-    const url = urlOf(item)
+    const sourceUrl = urlOf(item)
+    const url = opts.startAt > 0
+      ? await blobUrlOf(sourceUrl).catch(() => sourceUrl)
+      : sourceUrl
+    if (token !== playToken) return
     if (nxt.getAttribute('src') !== url) {
       nxt.src = url
       nxt.load()
       await waitEvent(nxt, 'loadeddata')
+      if (token !== playToken) return
     }
-    nxt.currentTime = 0
+    const startAt = Number.isFinite(opts.startAt) ? opts.startAt : 0
+    if (startAt > 0) {
+      // 先等 seek 真正落到 0.5s 再 play，避免 seeked 提前触发时从 0 起播。
+      await new Promise((resolve) => {
+        const deadline = performance.now() + 300
+        const check = () => {
+          if (!nxt.seeking && Math.abs(nxt.currentTime - startAt) < 0.08) {
+            resolve()
+            return
+          }
+          if (performance.now() > deadline) {
+            resolve()
+            return
+          }
+          setTimeout(check, 10)
+        }
+        nxt.currentTime = startAt
+        // 给浏览器一个任务周期真正进入 seeking，再判断，避免 currentTime
+        // 属性先返回 0.5、实际 seek 还没开始就提前 play。
+        setTimeout(check, 40)
+      })
+      if (token !== playToken) return
+    } else {
+      nxt.currentTime = 0
+    }
     // opts.loop 可覆盖：预览过渡/慌张时强制循环，方便调大小
     const isOneShot = opts.loop != null ? !opts.loop : item.loop === false
     nxt.loop = !isOneShot
+    // 慌张挥手在本端以 1.2 倍速播放
+    nxt.playbackRate = item.id === 'sit_panic' ? 1.2 : 1
     // 一旦播到循环动作（待机 / 强制循环预览），就说明已"落定"，清掉过渡进行中标记。
     // 收口在这里比各回调里手动清更稳：即使过渡被中断也能保证不卡死。
     if (!isOneShot) transitioning = false
@@ -554,6 +774,7 @@ async function play(id, opts = {}) {
     applyLayerScale(1 - frontIdx)
     // play() 在媒体被阻塞时可能永远不 resolve，加个上限兜底
     await withTimeout(nxt.play().catch(() => {}), 3000)
+    if (token !== playToken) return
     nxt.classList.add('on')
     cur.classList.remove('on')
     frontIdx = 1 - frontIdx
@@ -586,32 +807,44 @@ async function play(id, opts = {}) {
     if (!opts.keepTimer) scheduleRandom()
     broadcastState()
   } finally {
-    switching = false
+    if (token === playToken) switching = false
   }
 }
 
 function pickRandomTarget() {
-  // 只在当前姿态的可播动作里挑：坐着的时候不能突然站起来
-  const same = playablePool.filter((i) => postureOf(i) === posture)
-  if (!same.length) return null
-  const others = same.filter((i) => !current || i.id !== current.id)
-  const list = others.length ? others : same
+  // 随机池包含除慌张外的全部可播放动作：待机会保持所选间隔，其余播一次
+  const base = playablePool.filter((i) => i.id !== 'sit_panic')
+  if (!base.length) return null
+  const others = base.filter((i) => !current || i.id !== current.id)
+  const list = others.length ? others : base
   return list[(Math.random() * list.length) | 0]
 }
 
 function scheduleRandom() {
   if (randomTimer) { clearTimeout(randomTimer); randomTimer = null }
-  if (!cfg.random) return
-  const base = (Number(cfg.interval) || 20) * 1000
-  const wait = Math.round(base * (0.85 + Math.random() * 0.3))
+  if (!cfg.random || chatOpen) return
+  const intervalSec = Math.max(60, Number(cfg.interval) || 180)
   randomTimer = setTimeout(() => {
-    // 正在播过渡 / 慌张时不打断，等下一轮
-    if (!switching && !transitioning) {
-      const target = pickRandomTarget()
-      if (target) switchTo(target, { keepTimer: true })
+    if (chatOpen) return
+    if (aiBusy || switching || transitioning) {
+      randomTimer = setTimeout(scheduleRandom, 1000)
+      return
     }
-    scheduleRandom()
-  }, wait)
+    const target = pickRandomTarget()
+    if (!target) {
+      scheduleRandom()
+      return
+    }
+    if (IDLE_ACTIONS.has(target.id)) {
+      // 待机动画完整显示一个间隔后再换
+      switchTo(target, { keepTimer: true })
+      scheduleRandom()
+    } else {
+      // 一次性动作播完回到待机，再重新开始计时
+      playOneShot(target.id, idleIdFor(granularOf(target)))
+      if (!aiBusy) scheduleRandom()
+    }
+  }, intervalSec * 1000)
 }
 
 function setRandom(on) {
@@ -622,7 +855,9 @@ function setRandom(on) {
 }
 
 function setIntervalSec(seconds) {
-  cfg.interval = Number(seconds) || 20
+  const allowed = [180, 600, 900]
+  const value = Number(seconds)
+  cfg.interval = allowed.includes(value) ? value : 180
   invoke('save_cfg', { patch: { interval: cfg.interval } })
   scheduleRandom()
   broadcastState()
@@ -745,6 +980,7 @@ function resetActionScale(id) {
 // 坐姿动画的偏移出厂值来自 manifest（定稿）；慌张挥手可在开发者模式调，
 // 覆盖值存 localStorage（键为动作 id → CSS px）。范围 -20~20。
 const OFFSET_STORE = 'role2pet.actionOffsets.v1'
+const BUBBLE_STORE = 'role2pet.bubbleOffset.v1'
 
 function readActionOffsets() {
   try {
@@ -764,8 +1000,8 @@ function offsetOf(id) {
 
 /** 调某个动作的上下偏移，立刻生效（当前正在播的话） */
 function setActionOffset(id, value) {
-  // 保留 0.5px 步进精度（滑杆 step=0.5）
-  const v = Math.round(Math.min(20, Math.max(-20, Number(value) || 0)) * 2) / 2
+  // 开发者面板用 0.1px 精度，范围放宽到 ±100px，方便校准不同动作的接地位差
+  const v = Math.round(Math.min(100, Math.max(-100, Number(value) || 0)) * 10) / 10
   offsets[id] = v
 
   const store = readActionOffsets()
@@ -796,7 +1032,8 @@ function resetActionOffset(id) {
     refreshMask()
     syncContact()
   }
-  return 0
+  const item = pool.find((it) => it.id === id)
+  return item && typeof item.offset === 'number' ? item.offset : 0
 }
 
 // ————————————————————————— alpha 掩膜 —————————————————————————
@@ -844,28 +1081,218 @@ function refreshMask() {
 // ————————————————————————— 输入 —————————————————————————
 
 function bindInput() {
-  document.addEventListener('pointerdown', async (e) => {
-    if (e.button !== 0) return
+  const beginDrag = async () => {
+    if (dragging) return
     dragging = true
     document.body.classList.add('dragging')
-    await invoke('start_drag')
+    try {
+      await invoke('start_drag')
+    } catch (e) {
+      console.warn('[pet] start_drag failed', e)
+    }
+  }
+
+  document.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return
+    press = { id: e.pointerId, x: e.clientX, y: e.clientY, moved: false }
+    try { e.target.setPointerCapture?.(e.pointerId) } catch {}
   })
 
-  const endDrag = async () => {
-    if (!dragging) return
-    dragging = false
-    document.body.classList.remove('dragging')
-    await invoke('end_drag')
+  window.addEventListener('pointermove', (e) => {
+    if (!press || press.id !== e.pointerId) return
+    if (!press.moved && Math.hypot(e.clientX - press.x, e.clientY - press.y) > 5) {
+      press.moved = true
+      beginDrag()
+    }
+  })
+
+  const finish = async (e) => {
+    if (!press || (e && e.pointerId !== press.id)) return
+    const p = press
+    press = null
+    if (p.moved || dragging) {
+      if (!dragging) return
+      dragging = false
+      document.body.classList.remove('dragging')
+      try {
+        await invoke('end_drag')
+      } catch {}
+      return
+    }
+    handlePetClick(p.x, p.y)
   }
-  window.addEventListener('pointerup', endDrag)
-  window.addEventListener('pointercancel', endDrag)
-  window.addEventListener('blur', endDrag)
+
+  window.addEventListener('pointerup', finish)
+  window.addEventListener('pointercancel', finish)
+  window.addEventListener('blur', () => { if (press) finish() })
 
   // 右键 → 打开独立工具箱窗口（不再就地弹菜单）
   document.addEventListener('contextmenu', (e) => {
     e.preventDefault()
     invoke('open_toolbox')
   })
+}
+
+// ————————————————————————— 点击互动 / AI 动作 —————————————————————————
+
+const pick = (list) => list[(Math.random() * list.length) | 0]
+
+function idleIdFor(granularValue) {
+  if (granularValue === 'sit_side') return 'sit_lean'
+  if (granularValue === 'sit_upright') return 'sit_idle'
+  return 'stand_idle'
+}
+
+function settleIdFor() {
+  return idleIdFor(granular)
+}
+
+function readBubbleOffset() {
+  const value = Number(localStorage.getItem(BUBBLE_STORE))
+  if (!Number.isFinite(value)) return 0
+  return Math.round(Math.min(400, Math.max(-400, value)))
+}
+
+/** 气泡整体上下偏移：正数向下，范围 ±400px */
+function applyBubbleOffset(value, persist = true) {
+  const offset = Math.round(Math.min(400, Math.max(-400, Number(value) || 0)))
+  bubbleOffset = offset
+  document.documentElement.style.setProperty('--bubble-offset', `${offset}px`)
+  if (persist) {
+    try { localStorage.setItem(BUBBLE_STORE, String(offset)) } catch {}
+  }
+  return offset
+}
+
+/** 只给主动陪伴气泡用：换行/连续空白归一化，过长截断。 */
+function normalizeBubbleText(value) {
+  const text = String(value ?? '')
+    .replace(/\r\n?/g, '\n')
+    .replace(/\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const chars = Array.from(text)
+  return chars.length > 120 ? chars.slice(0, 120).join('') + '…' : text
+}
+
+/** AI 聊天/互动台词原样显示，不做换行或长度处理。 */
+function showBubble(text, ms = 4500) {
+  const el = document.getElementById('bubble')
+  if (!el || !text) return
+  el.textContent = text
+  el.classList.add('show')
+  if (bubbleTimer) clearTimeout(bubbleTimer)
+  bubbleTimer = setTimeout(() => {
+    el.classList.remove('show')
+    bubbleTimer = null
+  }, ms)
+}
+
+function showAmbientBubble(text) {
+  const clean = normalizeBubbleText(text)
+  if (clean) showBubble(clean, 8000)
+}
+
+function stopTts() {
+  if (ttsAudio) {
+    ttsAudio.onended = null
+    ttsAudio.pause()
+    ttsAudio = null
+  }
+  if (ttsUrl) {
+    URL.revokeObjectURL(ttsUrl)
+    ttsUrl = null
+  }
+}
+
+/** 打开聊天时回到当前姿态的待机；已经在待机就保持原样。 */
+function settleForChat(attempt = 0) {
+  if (!chatOpen || !cfg) return
+  const currentIdle =
+    current && IDLE_ACTIONS.has(current.id) && granularOf(current) === granular
+  const target = currentIdle ? current : pool.find((i) => i.id === idleIdFor(granular))
+  if (!target) return
+  if (switching) {
+    if (attempt < 40) setTimeout(() => settleForChat(attempt + 1), 80)
+    return
+  }
+  transitioning = false
+  if (!current || current.id !== target.id) {
+    switchTo(target, { keepTimer: true })
+  }
+}
+
+function playOneShot(id, settle) {
+  if (switching || transitioning) return
+  const item = pool.find((i) => i.id === id)
+  if (!item) return
+  aiBusy = true
+  scheduleRandom()
+  let done = false
+  const finish = () => {
+    if (done) return
+    done = true
+    clearTimeout(fallback)
+    aiBusy = false
+    const back = pool.find((i) => i.id === settle)
+    if (back) {
+      switchTo(back, { keepTimer: true })
+    } else {
+      scheduleRandom()
+    }
+  }
+  const fallback = setTimeout(finish, 12000)
+  switchTo(item, {
+    loop: false,
+    force: true,
+    silent: true,
+    keepTimer: true,
+    onEnded: finish,
+  })
+}
+
+function handlePetClick(cx, cy) {
+  if (aiBusy || switching || transitioning) return
+  const w = window.innerWidth || 1
+  const h = window.innerHeight || 1
+  const rx = cx / w
+  const ry = cy / h
+  if (rx < 0.15 || rx > 0.85) return
+
+  let zone = null
+  if (ry < 0.45) zone = 'head'
+  else if (ry < 0.72) zone = 'belly'
+  else if (ry < 0.90) zone = 'leg'
+  if (!zone) return
+
+  let id
+  let settle = settleIdFor()
+  if (zone === 'leg') {
+    if (granular !== 'sit_upright') return
+    id = 'sit_panic'
+    settle = 'sit_idle'
+  } else {
+    const suffix = zone === 'head' ? 'hair' : 'giggle'
+    const prefix = granular === 'sit_side' ? 'sit_side' : granular === 'sit_upright' ? 'sit' : 'stand'
+    id = `${prefix}_${suffix}`
+    if (!pool.some((i) => i.id === id)) id = `sit_${suffix}`
+  }
+  if (!pool.some((i) => i.id === id)) return
+  showBubble(pick(INTERACTION_LINES[zone]), 4500)
+  playOneShot(id, settle)
+}
+
+function playAiAction(action) {
+  if (!action || aiBusy || switching || transitioning) return
+  const item = pool.find((i) => i.id === action)
+  if (!item) return
+  // 只允许当前姿态的动作；不匹配就回到当前姿态待机
+  if (granularOf(item) !== granular) {
+    const settle = pool.find((i) => i.id === settleIdFor())
+    if (settle) switchTo(settle, { keepTimer: true })
+    return
+  }
+  playOneShot(action, settleIdFor())
 }
 
 // ————————————————————————— 提示 —————————————————————————

@@ -1,9 +1,8 @@
 {
-  "name": "@local/role2-pet",
+  "name": "dsh-plugin-raven-pet",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
-  "description": "role2 desktop pet rendered as a floating layer inside the DSH web GUI",
+  "description": "Raven desktop pet rendered as a floating layer inside the DSH web GUI",
   "icon": "./icon.svg",
   "main": "./index.js",
   "exports": {
@@ -22,6 +21,12 @@
     "cordis.patch.yml",
     "README.md"
   ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "desktop-pet"
+  ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -30,7 +35,18 @@
       "platform": "web",
       "immediately": false,
       "inject": []
+    },
+    "engines": {
+      "dsh": ">=0.2.2-rc.1"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shixiaoyu-funny/DSH-DesktopPet.git"
+  },
+  "homepage": "https://github.com/shixiaoyu-funny/DSH-DesktopPet#readme",
+  "bugs": {
+    "url": "https://github.com/shixiaoyu-funny/DSH-DesktopPet/issues"
   },
   "license": "MIT"
 }

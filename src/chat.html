@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raven · AI 聊天</title>
+  <link rel="stylesheet" href="chat.css" />
+</head>
+<body>
+  <header class="chat-head">
+    <div class="who">
+      <div class="avatar">R</div>
+      <div>
+        <div class="name">Raven</div>
+        <div class="sub" id="status">正在连接…</div>
+      </div>
+    </div>
+    <div class="head-actions">
+      <button id="btnSetup" title="配置 API Key">设置</button>
+      <button id="btnClear" title="清空会话">清空</button>
+    </div>
+  </header>
+
+  <main class="messages" id="messages"></main>
+
+  <footer class="composer">
+    <textarea id="input" rows="2" placeholder="和 Raven 说点什么…（Enter 发送，Shift+Enter 换行）"></textarea>
+    <button id="send" title="发送">发送</button>
+  </footer>
+
+  <div class="confirm-mask hidden" id="clearConfirm">
+    <div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirmText">
+      <div class="confirm-text" id="confirmText"></div>
+      <div class="confirm-actions">
+        <button id="confirmCancel" class="confirm-cancel">取消</button>
+        <button id="confirmOk" class="confirm-ok">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="chat.js"></script>
+</body>
+</html>

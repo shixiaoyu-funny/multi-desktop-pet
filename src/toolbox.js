@@ -19,16 +19,68 @@ const safeEmit = (name, payload) =>
 let state = null
 let devOpen = false
 let askTimer = null
+let affinity = 0
+let ttsEnabled = true
 
 const $ = (sel) => document.querySelector(sel)
 
 boot()
+
+function affinityInfo(score) {
+  if (score <= -30) return { cls: 'hostile', label: '极度反感' }
+  if (score < 300) return { cls: 'cold', label: '高冷防备' }
+  if (score < 1000) return { cls: 'warming', label: '勉强认可' }
+  return { cls: 'close', label: '卸下防备' }
+}
+
+function renderAffinity() {
+  const badge = $('#affinityBadge')
+  const text = $('#affinityText')
+  if (!badge || !text) return
+  const info = affinityInfo(affinity)
+  badge.classList.remove('hostile', 'cold', 'warming', 'close')
+  badge.classList.add(info.cls)
+  badge.title = `${info.label} · ${affinity}`
+  text.textContent = `好感度 ${affinity}`
+}
+
+async function refreshAffinity() {
+  try {
+    const status = await invoke('chat_status')
+    if (typeof status.affinity === 'number') {
+      affinity = status.affinity
+      renderAffinity()
+    }
+  } catch {
+    // 聊天服务还没就绪时保持当前显示
+  }
+}
+
+async function refreshTts() {
+  try {
+    const status = await invoke('tts_status')
+    if (typeof status.enabled === 'boolean') {
+      ttsEnabled = status.enabled
+      if (state) setSw($('#rowTts .sw'), ttsEnabled)
+    }
+  } catch {
+    // 忽略：保留开关默认值
+  }
+}
 
 function boot() {
   safeListen('pet:state', (e) => {
     state = e.payload
     if (askTimer) { clearTimeout(askTimer); askTimer = null }
     render()
+  })
+
+  safeListen('pet:affinity', (e) => {
+    const score = e.payload && e.payload.score
+    if (typeof score === 'number') {
+      affinity = score
+      renderAffinity()
+    }
   })
 
   // 桌宠窗口可能比这里晚就绪，隔一会儿问一次，问到就停
@@ -40,18 +92,43 @@ function boot() {
   }
   ask()
 
+  renderAffinity()
+  refreshAffinity()
+  refreshTts()
+  setInterval(refreshAffinity, 5000)
+
   bindEvents()
+  $('#btnChat').addEventListener('click', openChat)
+}
+
+async function openChat() {
+  try {
+    const status = await invoke('chat_status')
+    if (typeof status.affinity === 'number') {
+      affinity = status.affinity
+      renderAffinity()
+    }
+    if (status.configured) {
+      await invoke('open_chat')
+    } else {
+      await invoke('open_chat_setup')
+    }
+  } catch (error) {
+    console.warn('[toolbox] chat open failed', error)
+    invoke('open_chat_setup').catch(() => {})
+  }
 }
 
 function bindEvents() {
   document.addEventListener('click', (e) => {
     const el = e.target.closest(
-      '[data-play],[data-size],[data-interval],[data-toggle],[data-reset],[data-devall],[data-devcopy],[data-preview]'
+      '[data-play],[data-posture],[data-size],[data-interval],[data-toggle],[data-reset],[data-devall],[data-devcopy],[data-preview]'
     )
     if (!el) return
     if (el.disabled || el.closest('.row.disabled')) return
 
     if (el.dataset.play) return safeEmit('pet:command', { type: 'play', id: el.dataset.play })
+    if (el.dataset.posture) return safeEmit('pet:command', { type: 'posture', value: el.dataset.posture })
     if (el.dataset.preview) return safeEmit('pet:command', { type: 'preview', id: el.dataset.preview })
     if (el.dataset.size) return safeEmit('pet:command', { type: 'size', key: el.dataset.size })
     if (el.dataset.interval) {
@@ -66,17 +143,6 @@ function bindEvents() {
   // 滑杆拖动：实时生效
   document.addEventListener('input', (e) => {
     const el = e.target
-
-    // 慌张挥手的上下偏移
-    if (el.matches('[data-offset]')) {
-      const id = el.dataset.offset
-      const v = Number(el.value)
-      const out = document.querySelector(`[data-offval="${id}"]`)
-      if (out) out.textContent = (v > 0 ? '+' : '') + v + 'px'
-      safeEmit('pet:command', { type: 'setOffset', id, value: v })
-      return
-    }
-
     if (!el.matches('[data-range]')) return
     const id = el.dataset.range
     const v = Number(el.value) / 100
@@ -85,8 +151,36 @@ function bindEvents() {
     safeEmit('pet:command', { type: 'setScale', id, value: v })
   })
 
-  $('#btnDev').addEventListener('click', () => toggleDev())
+  const intervalRange = $('#intervalRange')
+  if (intervalRange) {
+    intervalRange.addEventListener('input', () => {
+      const values = [180, 600, 900]
+      const seconds = values[Number(intervalRange.value)] || 180
+      safeEmit('pet:command', { type: 'interval', seconds })
+    })
+  }
+
+  const devButton = $('#btnDev')
+  if (devButton) devButton.addEventListener('click', () => toggleDev())
   $('#devClose').addEventListener('click', () => toggleDev(false))
+  $('#devList').addEventListener('click', (e) => {
+    const button = e.target.closest('[data-dev-id]')
+    if (button) selectDev(button.dataset.devId)
+  })
+  $('#devPanel').addEventListener('click', (e) => {
+    const button = e.target.closest('[data-snap-size]')
+    if (!button) return
+    safeEmit('pet:command', { type: 'size', key: button.dataset.snapSize })
+    $('#devTip').textContent = `坐线档位：${button.textContent}；拖正坐/侧坐滑杆调整`
+  })
+  $('#devReset').addEventListener('click', resetDev)
+  $('#devAll').addEventListener('click', resetAllDev)
+  $('#devCopy').addEventListener('click', copyDev)
+  $('#devScale').addEventListener('input', onDevScale)
+  $('#devOffset').addEventListener('input', onDevOffset)
+  $('#devBubble').addEventListener('input', onDevBubble)
+  $('#devSnapUpright').addEventListener('input', () => onDevSnap('upright'))
+  $('#devSnapSide').addEventListener('input', () => onDevSnap('side'))
   $('#btnQuit').addEventListener('click', () => invoke('quit_app'))
 
   document.addEventListener('keydown', (e) => {
@@ -97,6 +191,16 @@ function bindEvents() {
 /** 开关型指令：把当前值取反发给桌宠 */
 function toggle(kind) {
   const c = state && state.cfg
+  if (kind === 'tts') {
+    const next = !ttsEnabled
+    invoke('tts_set_enabled', { enabled: next })
+      .then(() => {
+        ttsEnabled = next
+        if (state) setSw($('#rowTts .sw'), ttsEnabled)
+      })
+      .catch((error) => console.warn('[toolbox] tts toggle failed', error))
+    return
+  }
   if (!c) return
   if (kind === 'random') safeEmit('pet:command', { type: 'random', on: !c.random })
   else if (kind === 'top') safeEmit('pet:command', { type: 'top', on: !c.alwaysOnTop })
@@ -109,47 +213,36 @@ function toggle(kind) {
 
 // ————————————————————————— 渲染 —————————————————————————
 
-/** 动作池分组：站姿 / 坐姿 / 慌张。过渡动画不展示（只在状态机内部自动播放）。 */
-const POOL_GROUPS = [
-  { key: 'stand', label: '站姿' },
-  { key: 'sit', label: '坐姿' },
-  { key: 'panic', label: '慌张' },
+/** 主界面只给三个姿态入口；其余动作保留在隐藏的开发者面板/随机/AI 里。 */
+const POSTURE_BUTTONS = [
+  { key: 'stand', label: '站立' },
+  { key: 'upright', label: '正坐' },
+  { key: 'side', label: '侧坐' },
 ]
 
 function render() {
   if (!state) return
   const c = state.cfg
 
-  // 动作池：全部动作按四组展示
+  // 姿态：站立 / 正坐 / 侧坐
   const pool = $('#pool')
-  const sig = state.pool.map((i) => i.id).join(',')
-  if (pool.dataset.sig !== sig) {
-    pool.dataset.sig = sig
-    pool.innerHTML = POOL_GROUPS.map((g) => {
-      const items = state.pool.filter((i) => i.group === g.key)
-      if (!items.length) return ''
-      const btns = items
-        .map((i) => {
-          // 待机动作点选走状态机（带过渡）；过渡/慌张点选循环预览（调大小）
-          if (i.playable) return `<button class="act" data-play="${i.id}">${i.label}</button>`
-          return `<button class="act act-one" data-preview="${i.id}" title="循环预览，调大小用">${i.label}</button>`
-        })
-        .join('')
-      return `<div class="pool-group">
-          <div class="pool-group-head">${g.label}<span class="pool-count">${items.length}</span></div>
-          <div class="pool-set">${btns}</div>
-        </div>`
-    }).join('')
+  if (pool.dataset.sig !== 'postures') {
+    pool.dataset.sig = 'postures'
+    pool.innerHTML = `<div class="pool-group">
+        <div class="pool-group-head">姿态</div>
+        <div class="pool-set">${POSTURE_BUTTONS.map(
+          (item) => `<button class="act" data-posture="${item.key}">${item.label}</button>`
+        ).join('')}</div>
+      </div>`
   }
-  pool.querySelectorAll('[data-play]').forEach((el) => {
-    el.classList.toggle('on', state.action === el.dataset.play)
-  })
-  pool.querySelectorAll('[data-preview]').forEach((el) => {
-    el.classList.toggle('on', state.action === el.dataset.preview)
+  const activePosture = state.posture === 'stand' ? 'stand' : state.sitKind === 'side' ? 'side' : 'upright'
+  pool.querySelectorAll('[data-posture]').forEach((el) => {
+    el.classList.toggle('on', el.dataset.posture === activePosture)
   })
 
   // 开关
   setSw($('#rowRandom .sw'), c.random)
+  setSw($('#rowTts .sw'), ttsEnabled)
   setSw($('#rowTop .sw'), c.alwaysOnTop)
   setSw($('#rowSnap .sw'), c.snap)
   setSw($('#rowGravity .sw'), c.gravity)
@@ -165,10 +258,12 @@ function render() {
   document.querySelectorAll('[data-interval]').forEach((el) => {
     el.classList.toggle('on', Number(c.interval) === Number(el.dataset.interval))
   })
-
-  $('#meta').textContent =
-    `容器 ${state.containerPx}px · dpr ${state.dpr} · ` +
-    `${state.action || '-'} · ${state.posture === 'sit' ? '坐姿' : '站姿'}`
+  const intervalValues = [180, 600, 900]
+  const intervalRange = $('#intervalRange')
+  if (intervalRange && document.activeElement !== intervalRange) {
+    const index = intervalValues.indexOf(Number(c.interval))
+    intervalRange.value = String(index >= 0 ? index : 0)
+  }
 
   if (devOpen) renderDev()
 }
@@ -177,95 +272,217 @@ function setSw(el, on) {
   if (el) el.classList.toggle('on', !!on)
 }
 
-// ————————————————————————— 开发者面板 —————————————————————————
+// ————————————————————————— 开发者面板（DSH 风格） —————————————————————————
+
+const DEV_GROUPS = [
+  { key: 'stand', label: '站姿' },
+  { key: 'sit_upright', label: '正坐' },
+  { key: 'sit_side', label: '侧坐' },
+  { key: 'trans', label: '过渡' },
+  { key: 'panic', label: '慌张' },
+]
+
+let devSelected = null
+
+function devGroupOf(item) {
+  if (item.group === 'trans') return 'trans'
+  // 正坐慌张属于正坐，不单独放在“慌张”组
+  if (item.posture === 'sit') return item.sitKind === 'side' ? 'sit_side' : 'sit_upright'
+  if (item.group === 'panic') return 'panic'
+  return 'stand'
+}
 
 function toggleDev(on) {
   devOpen = typeof on === 'boolean' ? on : !devOpen
   $('#devPanel').classList.toggle('hidden', !devOpen)
-  $('#btnDev').classList.toggle('on', devOpen)
-  if (devOpen) renderDev(true)
+  const devButton = $('#btnDev')
+  if (devButton) devButton.classList.toggle('on', devOpen)
+  if (devOpen) {
+    renderDev(true)
+    const start = state && state.pool.some((i) => i.id === state.action) ? state.action : 'stand_idle'
+    selectDev(start)
+  } else if (state && state.action) {
+    safeEmit('pet:command', { type: 'play', id: state.action })
+  }
+}
+
+function currentScale(id) {
+  const item = state && state.pool.find((i) => i.id === id)
+  if (!item) return 1
+  const value = state.scales && state.scales[id]
+  return typeof value === 'number' ? value : (typeof item.scale === 'number' ? item.scale : 1)
+}
+
+function currentOffset(id) {
+  const item = state && state.pool.find((i) => i.id === id)
+  if (!item) return 0
+  const value = state.offsets && state.offsets[id]
+  return typeof value === 'number' ? value : (typeof item.offset === 'number' ? item.offset : 0)
+}
+
+function setScaleUi(value) {
+  const input = $('#devScale')
+  if (input) input.value = String(value)
+  const out = $('#devScaleVal')
+  if (out) out.textContent = Number(value).toFixed(3)
+}
+
+function setOffsetUi(value) {
+  const input = $('#devOffset')
+  if (input) input.value = String(value)
+  const out = $('#devOffsetVal')
+  if (out) out.textContent = (value > 0 ? '+' : '') + Number(value).toFixed(1)
 }
 
 function renderDev(force = false) {
   if (!state) return
-  const wrap = $('#devRows')
+  const list = $('#devList')
   const sig = state.pool.map((i) => i.id).join(',')
-  if (force || wrap.dataset.sig !== sig) {
-    wrap.dataset.sig = sig
-    wrap.innerHTML = state.pool
-      .map((i) => {
-        const base = typeof i.scale === 'number' ? i.scale : 1
-        // 慌张挥手额外给一个上下偏移滑杆（-20~20px），校准接地位差
-        const offset = i.group === 'panic'
-          ? `<div class="d-off">
-              <div class="d-off-head">
-                <span>上下偏移</span>
-                <span class="d-off-val" data-offval="${i.id}"></span>
-              </div>
-              <input class="d-range" type="range" min="-20" max="20" step="0.5" value="0" data-offset="${i.id}" />
-            </div>`
-          : ''
-        return `<div class="d-row">
-          <div class="d-head">
-            <span class="d-name">${i.label}</span>
-            <span class="d-val" data-val="${i.id}"></span>
-          </div>
-          <input class="d-range" type="range" min="30" max="150" step="0.5" value="100" data-range="${i.id}" />
-          ${offset}
-          <div class="d-foot">
-            <span class="d-base">出厂 ${Math.round(base * 100)}%</span>
-            <button class="d-reset" data-reset="${i.id}">复位</button>
-          </div>
-        </div>`
-      })
-      .join('')
+  if (force || list.dataset.sig !== sig) {
+    list.dataset.sig = sig
+    list.innerHTML = DEV_GROUPS.map((group) => {
+      const items = state.pool.filter((i) => devGroupOf(i) === group.key)
+      if (!items.length) return ''
+      return `<div class="dev-group">
+        <div class="dev-group-title">${group.label}<span>${items.length}</span></div>
+        <div class="dev-chips">${items.map((i) =>
+          `<button type="button" class="dev-chip${devSelected === i.id ? ' on' : ''}" data-dev-id="${i.id}">${i.label}</button>`
+        ).join('')}</div>
+      </div>`
+    }).join('')
   }
   syncDevValues()
 }
 
-/** 只同步数值，不重建 DOM —— 否则拖滑杆拖到一半会被冲掉 */
+function selectDev(id) {
+  if (!state) return
+  const item = state.pool.find((i) => i.id === id)
+  if (!item) return
+  devSelected = id
+  $('#devSelectedLabel').textContent = item.label
+  document.querySelectorAll('#devList [data-dev-id]').forEach((button) => {
+    button.classList.toggle('on', button.dataset.devId === id)
+  })
+  setScaleUi(currentScale(id))
+  setOffsetUi(currentOffset(id))
+  safeEmit('pet:command', { type: 'preview', id })
+  syncDevValues()
+  $('#devTip').textContent = `正在预览 ${item.label}；拖滑杆实时生效`
+}
+
 function syncDevValues() {
-  for (const i of state.pool) {
-    const base = typeof i.scale === 'number' ? i.scale : 1
-    const v = state.scales[i.id] != null ? state.scales[i.id] : base
-
-    const out = document.querySelector(`[data-val="${i.id}"]`)
-    if (out) {
-      out.textContent = (v * 100).toFixed(0) + '%'
-      out.classList.toggle('chg', Math.abs(v - base) > 0.0005)
-    }
-    const rng = document.querySelector(`[data-range="${i.id}"]`)
-    if (rng && document.activeElement !== rng) rng.value = (v * 100).toFixed(1)
-
-    // 慌张挥手的上下偏移
-    const offVal = document.querySelector(`[data-offval="${i.id}"]`)
-    const offRng = document.querySelector(`[data-offset="${i.id}"]`)
-    if (offVal && offRng) {
-      const ov = state.offsets && state.offsets[i.id] != null ? state.offsets[i.id] : 0
-      offVal.textContent = (ov > 0 ? '+' : '') + ov + 'px'
-      if (document.activeElement !== offRng) offRng.value = ov
-    }
-  }
+  if (!devSelected || !state) return
+  const scale = currentScale(devSelected)
+  const offset = currentOffset(devSelected)
+  const scaleInput = $('#devScale')
+  const offsetInput = $('#devOffset')
+  if (scaleInput && document.activeElement !== scaleInput) scaleInput.value = String(scale)
+  if (offsetInput && document.activeElement !== offsetInput) offsetInput.value = String(offset)
+  const scaleOut = $('#devScaleVal')
+  if (scaleOut) scaleOut.textContent = Number(scale).toFixed(3)
+  const offsetOut = $('#devOffsetVal')
+  if (offsetOut) offsetOut.textContent = (offset > 0 ? '+' : '') + Number(offset).toFixed(1)
+  const bubble = state && typeof state.bubbleOffset === 'number' ? state.bubbleOffset : 0
+  const bubbleInput = $('#devBubble')
+  if (bubbleInput && document.activeElement !== bubbleInput) bubbleInput.value = String(bubble)
+  const bubbleOut = $('#devBubbleVal')
+  if (bubbleOut) bubbleOut.textContent = (bubble > 0 ? '+' : '') + bubble + 'px'
+  const sizeSuffix = state && state.cfg && state.cfg.size === 'large'
+    ? 'Large' : state && state.cfg && state.cfg.size === 'medium' ? 'Medium' : 'Small'
+  const snapUpright = state && state.cfg && typeof state.cfg[`snapOffsetUpright${sizeSuffix}`] === 'number'
+    ? state.cfg[`snapOffsetUpright${sizeSuffix}`] : 20
+  const snapSide = state && state.cfg && typeof state.cfg[`snapOffsetSide${sizeSuffix}`] === 'number'
+    ? state.cfg[`snapOffsetSide${sizeSuffix}`] : 6
+  const snapUprightInput = $('#devSnapUpright')
+  const snapSideInput = $('#devSnapSide')
+  if (snapUprightInput && document.activeElement !== snapUprightInput) snapUprightInput.value = String(snapUpright)
+  if (snapSideInput && document.activeElement !== snapSideInput) snapSideInput.value = String(snapSide)
+  const snapUprightOut = $('#devSnapUprightVal')
+  const snapSideOut = $('#devSnapSideVal')
+  if (snapUprightOut) snapUprightOut.textContent = (snapUpright > 0 ? '+' : '') + snapUpright + 'px'
+  if (snapSideOut) snapSideOut.textContent = (snapSide > 0 ? '+' : '') + snapSide + 'px'
+  document.querySelectorAll('[data-snap-size]').forEach((button) => {
+    button.classList.toggle('on', !!state && !!state.cfg && button.dataset.snapSize === state.cfg.size)
+  })
+  const label = state.pool.find((i) => i.id === devSelected)
+  if (label) $('#devSelectedLabel').textContent = label.label
 }
 
-function resetAllScales() {
-  if (!state) return
-  for (const i of state.pool) {
-    safeEmit('pet:command', { type: 'resetScale', id: i.id })
-    if (i.group === 'panic') safeEmit('pet:command', { type: 'resetOffset', id: i.id })
-  }
+function onDevScale() {
+  if (!devSelected) return
+  const value = Number($('#devScale').value)
+  $('#devScaleVal').textContent = value.toFixed(3)
+  safeEmit('pet:command', { type: 'setScale', id: devSelected, value })
 }
 
-function copyScales() {
+function onDevOffset() {
+  if (!devSelected) return
+  const value = Number($('#devOffset').value)
+  $('#devOffsetVal').textContent = (value > 0 ? '+' : '') + value.toFixed(1)
+  safeEmit('pet:command', { type: 'setOffset', id: devSelected, value })
+}
+
+function onDevBubble() {
+  const value = Number($('#devBubble').value)
+  $('#devBubbleVal').textContent = (value > 0 ? '+' : '') + value + 'px'
+  safeEmit('pet:command', { type: 'bubbleOffset', value })
+}
+
+function onDevSnap(kind) {
+  const input = kind === 'side' ? $('#devSnapSide') : $('#devSnapUpright')
+  const out = kind === 'side' ? $('#devSnapSideVal') : $('#devSnapUprightVal')
+  const value = Number(input.value)
+  out.textContent = (value > 0 ? '+' : '') + value + 'px'
+  const size = state && state.cfg && state.cfg.size ? state.cfg.size : 'small'
+  safeEmit('pet:command', { type: 'snapOffset', kind, size, value })
+}
+
+function resetDev() {
+  if (!devSelected || !state) return
+  const item = state.pool.find((i) => i.id === devSelected)
+  safeEmit('pet:command', { type: 'resetScale', id: devSelected })
+  safeEmit('pet:command', { type: 'resetOffset', id: devSelected })
+  setScaleUi(item && typeof item.scale === 'number' ? item.scale : 1)
+  setOffsetUi(item && typeof item.offset === 'number' ? item.offset : 0)
+  $('#devTip').textContent = '已复位为 manifest 出厂值'
+}
+
+function resetAllDev() {
   if (!state) return
-  const data = {}
-  for (const i of state.pool) data[i.id] = state.scales[i.id]
-  const text = JSON.stringify(data, null, 2)
-  navigator.clipboard?.writeText(text).catch(() => {})
-  console.log('[toolbox] 缩放数值:\n' + text)
-  const tip = document.querySelector('.dev-tip')
-  if (tip) {
-    tip.textContent = '已复制：' + text.replace(/\s+/g, ' ')
-    setTimeout(() => { tip.textContent = '拖动滑杆实时生效，数值会自动记住' }, 4000)
+  for (const item of state.pool) {
+    safeEmit('pet:command', { type: 'resetScale', id: item.id })
+    safeEmit('pet:command', { type: 'resetOffset', id: item.id })
   }
+  syncDevValues()
+  $('#devTip').textContent = '已复位全部动作'
+}
+
+function copyDev() {
+  if (!state) return
+  const out = {}
+  for (const item of state.pool) {
+    out[item.id] = {
+      scale: Math.round(currentScale(item.id) * 1000) / 1000,
+      offset: Math.round(currentOffset(item.id) * 10) / 10,
+    }
+  }
+  const text = JSON.stringify(out, null, 2)
+  copyText(text)
+  console.log('[toolbox] 全部动作数值:\n' + text)
+  $('#devTip').textContent = `已生成 ${state.pool.length} 个动作的 scale/offset（已尝试复制，也打印在控制台）`
+}
+
+function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => {})
+  }
+  const area = document.createElement('textarea')
+  area.value = text
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  try { document.execCommand('copy') } catch {}
+  area.remove()
+  return Promise.resolve()
 }

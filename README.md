@@ -1,6 +1,6 @@
-# role2 透明 WebM 桌宠
+# Raven 透明 WebM 桌宠
 
-一个运行在 Windows 桌面的透明 WebM 桌宠。角色以 768×768@60fps 带 Alpha 通道的 VP9 视频渲染，能拖拽、坐在任务栏/其他窗口边缘、受重力掉落、跟随宿主窗口移动，并带一个独立的工具箱窗口和系统托盘图标。
+一个运行在 Windows 桌面的透明 WebM 桌宠。角色以 768×768@60fps 带 Alpha 通道的 VP9 视频渲染，能拖拽、坐在任务栏/其他窗口边缘、受重力掉落、跟随宿主窗口移动，并带一个独立的工具箱窗口、系统托盘图标和 AI 聊天。角色工程代号仍为 `role2`。
 
 > 桌宠本体（程序）与美术动画是分开的两条线：本仓库只负责程序逻辑；角色动作视频由美术侧产出后，放进 `src/assets/` 并登记到 `src/assets/manifest.json` 即可接入。
 
@@ -36,7 +36,7 @@ cargo build
 .\target\debug\role2-pet.exe
 ```
 
-（或直接双击 `启动桌宠.bat`，它会自动加载 MSVC 环境、编译并启动。）
+（或直接双击 `启动桌宠.vbs` 无控制台启动；`启动桌宠.bat` 会显示编译控制台，只建议构建时用。）
 
 ### 代码地图：想改什么就动哪
 
@@ -69,9 +69,11 @@ cargo build
 - **窗口边缘 / 任务栏吸附**：松开时若接触点距离某个非最大化窗口上沿或任务栏上沿 ≤ 80px（逻辑像素），自动「坐」上去。
 - **重力掉落**：吸附关闭时可开启重力，把角色拎到半空松手会受重力下落，落在**任务栏或任意非最大化窗口的上边缘**上，速度快时先弹跳几次再坐稳。
 - **拖拽跟随**：坐着的宿主窗口被拖动时，桌宠跟着平移；宿主最大化/关闭/最小化、或缩窄到接触点失去支撑时，继续受重力往下掉到更低的窗口或任务栏。
-- **多动作随机切换**：站姿 / 坐姿各一组动作，随机切换只在同姿态内进行；落座时在坐姿动作里随机挑一个。
+- **随机轮换**：随机池包含除慌张外的全部动作；待机动作完整展示所选间隔（3/10/15 分钟）后切换，其他动作播一次回到待机再重新计时；AI 聊天窗口打开时暂停随机。
+- **点击互动 + 气泡**：点头部撩头发、点腹部捂嘴笑、正坐时点腿慌张；按当前姿态选对应版本，并随机弹出一句反应台词。
+- **AI 聊天**：工具箱「AI 聊天」按钮打开独立聊天窗口，接入阿里云百炼 `qwen3.8-flash`，流式回复、会话记忆、角色设定，并按当前姿态约束动作。
 - **姿态状态机 + 过渡动画**：站 ↔ 坐、正坐 ↔ 侧坐之间切换时，自动播放对应的过渡动画（共 6 条），播完落定在目标待机动作；同姿态内切换则不播过渡。
-- **慌张挥手**：重力掉落到任务栏的瞬间播「正坐慌张挥手」一次，结束后随机落定正坐或侧坐（落侧坐会自动补一段过渡）。
+- **慌张挥手**：从超过 **200px** 的高度落到任务栏时播「正坐慌张挥手」一次（本端 1.2 倍速）；高度不足或落到窗口上沿不触发，结束后随机落定正坐或侧坐（落侧坐会自动补一段过渡）。
 - **三档尺寸**：大 768 / 中 512 / 小 384（物理像素）。
 - **系统托盘 + 独立工具箱窗口**：托盘右键可打开工具箱或退出；工具箱窗口 600×400，不透明、不常驻（关掉即销毁）。
 
@@ -108,14 +110,14 @@ Desktop_Pet/
 │   ├── toolbox.css            # 工具箱样式
 │   └── assets/
 │       ├── manifest.json      # 动作池 / 姿态 / 缩放 / 偏移配置
-│       ├── idle/              # 7 个 768×768@60fps 动作视频（6 待机 + 慌张挥手）
+│       ├── idle/              # 6 个持续循环的待机视频（空手 / 持花 / 手机 / 书籍 / 正坐 / 侧坐）
 │       │   ├── 站姿待机.webm
 │       │   ├── 站姿鲜花.webm
 │       │   ├── 站姿手机.webm
 │       │   ├── 站姿书籍.webm
 │       │   ├── 正坐待机.webm
-│       │   ├── 侧坐单手撑.webm
-│       │   └── 正坐慌张挥手.webm
+│       │   └── 侧坐单手撑.webm
+│       ├── oneshot/           # 13 个一次性动作（擦汗 / 撩头发 / 生气 / 捂嘴笑 / 慌张挥手）
 │       └── trans/             # 6 个过渡动画（站↔坐、正坐↔侧坐）
 │           ├── 过渡_站到正坐.webm
 │           ├── 过渡_站到侧坐.webm
@@ -161,6 +163,8 @@ Desktop_Pet/
 
 脚本假定 MSVC 在 `D:\BuildTools`，路径不对就改脚本里的 `VCVARS` 变量。
 
+日常启动建议双击 `启动桌宠.vbs`：它直接以隐藏窗口方式启动 `role2-pet.exe`，不会弹黑色控制台；`角色启动时枚举应用/命令行工具` 的子进程也都使用 `CREATE_NO_WINDOW`，不会闪黑框。
+
 ### 方式二：手动
 
 ```powershell
@@ -193,22 +197,116 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 | 操作 | 行为 |
 |---|---|
 | 左键按住角色 | 拖拽移动（限制在屏幕内） |
-| 松开 | 依据配置吸附到窗口边缘/任务栏，或受重力掉落 |
+| 左键点击头部 | 撩头发 + 随机气泡 |
+| 左键点击腹部 | 捂嘴笑 + 随机气泡 |
+| 正坐时点击腿部 | 慌张一次 + 随机气泡 |
 | 右键 | 打开工具箱窗口 |
 | 托盘图标右键 | 「打开工具箱窗口」/「退出」 |
 
 ### 工具箱窗口
 
-打开后左侧是**动作池**（按「站姿 / 坐姿 / 慌张」分组，站姿 4 个、坐姿 2 个、慌张 1 个；过渡动画不在池里，只在姿态切换时自动播放），右侧是设置项：
+打开后左侧只有**站立 / 正坐 / 侧坐**三个姿态入口；其他一次性动作不在普通界面展示，由随机、AI、点击互动或重力事件触发。右侧是设置项：右上角的 **AI 聊天** 按钮会打开聊天窗口；没有配置 Key 时会自动打开配置页。
 
 - **大小**：大 / 中 / 小（768 / 512 / 384 物理像素）
-- **随机切换动作**：开关 + 间隔（15s / 30s / 60s），只在当前姿态内随机
+- **随机切换动作**：开关；切换间隔可选 3 / 10 / 15 分钟。待机动作保持完整间隔，非待机动作播一次后回到待机并重置计时；AI 聊天窗口打开期间暂停。
 - **窗口置顶**
 - **坐在窗口边缘**：开启吸附（与重力互斥，开吸附自动关重力）
 - **重力掉落**：吸附关闭时才可用
-- **开发者选项**：每个动作的显示缩放微调，慌张挥手额外有上下偏移滑杆（存 localStorage，可复位/复制数值）
+- **开发者入口**：当前已隐藏（桌面工具箱和 DSH 菜单都不显示入口），代码和面板保留，后续需要再恢复。坐线值固定为：小档正坐 20 / 侧坐 6，中档 27 / 8，大档 40 / 12（逻辑像素，仅吸附时生效）。
 
 > 工具箱不持有权威状态：它只订阅桌宠窗口广播的 `pet:state`，操作通过 `pet:command` 事件发回桌宠窗口落地，再回推新状态。
+
+---
+
+## AI 聊天
+
+工具箱右上角的 **AI 聊天** 按钮会打开独立聊天窗口。第一次使用前需要配置阿里云百炼的 API Key：
+
+1. 打开 [百炼控制台](https://bailian.console.aliyun.com/?apiKey=1) 创建 API Key；
+2. 设置用户环境变量 `DASHSCOPE_API_KEY`（PowerShell：`setx DASHSCOPE_API_KEY "sk-..."`）；
+3. 如果桌宠已经在运行，在配置页点「重新检测」；仍读不到再从托盘退出并重新打开。
+
+没有检测到 Key 时，点「AI 聊天」会自动打开配置页，而不是直接进聊天。Key 只从环境变量读取，不会写进会话文件或仓库。
+
+- **模型**：`qwen3.8-flash`，接口为百炼 OpenAI 兼容模式 `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`。
+- **角色**：Raven，黑长直、红瞳、黑红制服、金色发饰；傲娇、爱挑逗、嘴硬心软。
+- **流式输出**：SSE 增量返回，聊天窗口边收边显示。
+- **会话记忆**：最近 40 条消息保存在 `%APPDATA%\com.local.role2.pet\chat_history.json`，重启后保留；聊天窗口的「清空」会同时清空内存和文件。
+- **聊天时保持姿态**：打开聊天窗口后暂停随机，并保持打开前的姿态；如果当前正在演表情/慌张，会回到该姿态的待机（站姿待机 / 正坐待机 / 侧坐单手撑），不会停在最后一帧。
+- **动作约束**：每次请求都会把当前姿态（站姿 / 正坐 / 侧坐）和该姿态允许的动作表写进系统提示词；动作表包含英文 id、中文名称、含义/使用时机，并要求模型只输出英文 id。模型返回 `{"reply":"...","action":"...","score":...}` 后，后端校验 JSON 能否解析、action 是否在当前列表中；失败会自动重新生成，最多重试 10 次。仍失败则回复兜底台词「本小姐现在不想理你，给我点时间静静......」，不会把坏格式发出去。
+- **动作触发**：模型返回的动作通过 `pet:ai-action` 发给桌宠窗口，播放一次后回到当前姿态待机；回复文本同时显示在聊天窗口和桌宠气泡里。
+
+### 好感度系统
+
+好感度总分保存在 `%APPDATA%\com.local.role2.pet\affinity.json`。模型在 JSON 里返回 `score` 变化值，服务端按当前阶段限制范围后累加：
+
+| 阶段 | 分数 | 扣分范围 | 加分范围 |
+|---|---:|---:|---:|
+| 极度反感 | ≤ -30 | 3~10 | 1~5 |
+| 高冷防备 | -29~299 | 1~5 | 2~7 |
+| 勉强认可 | 300~999 | 2~8 | 2~10 |
+| 卸下防备 | ≥ 1000 | 1~5 | 3~15 |
+
+阶段描述会动态注入系统提示词开头。极度反感阶段不向模型提供工具，且动作必须使用当前姿态的生气/无视动作（站姿 `stand_angry` / `stand_phone`，正坐 `sit_angry`，侧坐 `sit_side_angry`）。JSON 校验失败时聊天窗口状态显示「思考中」。
+
+聊天窗口的「清空」会先经过四段确认，确认后同时清空聊天历史和好感度（回到 0）。
+
+### 语音输出（TTS）
+
+工具箱「语音输出」开关控制是否朗读 AI 回复和主动陪伴气泡：
+
+- 模型：`qwen-audio-3.0-tts-plus`
+- 音色：`qwen-audio-3.0-tts-plus-longmohuiling`
+- 官方 HTTP `input.rate` 设为 `1.1`，由服务端合成稍快语速；前端 `playbackRate` 保持 1.0，不叠加；
+- 使用官方 HTTP + SSE 流式合成，服务端在内存中合并 MP3 音频块，再以 base64 交给桌宠前端播放；
+- 不写本地音频文件，也不上传 OSS；音频只在内存和 WebView Blob 中存在；
+- 新语音会停止上一条语音；
+- 开关状态保存在 `%APPDATA%\com.local.role2.pet\tts.json`。
+
+默认使用 `https://dashscope.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer`。如果账号要求业务空间专属域名，可以设置：
+
+```powershell
+setx DASHSCOPE_WORKSPACE_ID "你的业务空间ID"
+# 或完全自定义端点
+setx DASHSCOPE_TTS_URL "https://..../api/v1/services/audio/tts/SpeechSynthesizer"
+```
+
+## 工具浏览（ReAct）
+
+聊天已改为手写 ReAct：模型可先调用工具，拿到结果后再输出最终 JSON。当前工具：
+
+- **Bilibili（已可用）**：`bilibili_search`、`bilibili_popular`、`bilibili_video`、`bilibili_user`，公开只读接口，不需要登录。搜索使用 WBI 签名 + `buvid` Cookie；遇到 B站 412 会自动刷新会话重试一次，降低风控拦截概率。
+- **capture_screen**：截取当前主屏幕，压缩成 JPEG 后以 `image_url` 的 base64 附加给 `qwen3.8-flash`；需要看用户屏幕时使用。
+- **open_app**：启动时扫描 Start Menu / `Get-StartApps`，把应用名注入 SystemMessage；用户说“打开某软件”时按应用名匹配并启动实际快捷方式。
+- **sandbox_terminal**：只读 PowerShell 沙盒终端，只允许 `Get-*`、`where`、`whoami`、`dir`、`echo` 等查询；禁止写入、删除、启动进程、网络请求和管道，超时 12 秒。
+
+工具全部通过统一 `ToolRegistry` 注入；当前不支持下单、支付、发消息、上传/下载。
+
+## 主动陪伴
+
+启动后会检测当前前台应用（1 秒轮询），先经过本地硬排除，再让 `qwen3.8-flash` 判断“这个软件值不值得主动搭话”：
+
+- 文件资源管理器、设置、任务管理器、系统组件、桌宠自己 → 直接静默，不请求 AI；
+- 浏览器/微信/QQ → 可以说话，但默认不截图；
+- B站、VS Code、Office、Steam 等 → 判断通过后显示打开气泡；
+- 未知应用默认只判断，不开放截图。
+
+通过判断后：
+
+- 约 3 秒稳定后显示一条打开气泡；
+- 在 45 秒、180 秒、420 秒、660 秒、900 秒……（`180 + n×240`）自动截当前前台窗口发给模型，生成一条陪伴气泡；
+- 气泡不写 `chat_history.json`，不进入聊天记忆；
+- 截图只截前台窗口，截前临时隐藏桌宠；浏览器/社交/全屏/空闲/聊天窗口打开时跳过；
+- 同一应用打开气泡 30 分钟冷却，全局气泡最小间隔 20 秒，每小时最多 12 张截图。
+
+可用环境变量关闭：
+
+```powershell
+setx RAVEN_AMBIENT 0              # 关闭整个主动陪伴
+setx RAVEN_AMBIENT_SCREENSHOTS 0  # 只关闭自动截图
+```
+
+`ambient_probe` 命令（调试用）可查看当前前台应用、分类、gate 状态和空闲状态。截图仍然只在内存中转 Base64，不落盘、不上 OSS。
 
 ---
 
@@ -226,14 +324,21 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 
 ```json
 {
+  "version": 2,
   "size": "medium",
   "cx": 960, "cy": 540,
   "alwaysOnTop": true,
-  "random": false,
-  "interval": 20,
+  "random": true,
+  "interval": 180,
   "action": "stand_idle",
   "snap": false,
-  "gravity": false
+  "gravity": false,
+  "snapOffsetUprightSmall": 20,
+  "snapOffsetUprightMedium": 27,
+  "snapOffsetUprightLarge": 40,
+  "snapOffsetSideSmall": 6,
+  "snapOffsetSideMedium": 8,
+  "snapOffsetSideLarge": 12
 }
 ```
 
@@ -243,10 +348,12 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 | `cx` / `cy` | number | 窗口中心坐标（物理像素），启动时若为空则落在主屏右下角 |
 | `alwaysOnTop` | bool | 是否置顶 |
 | `random` | bool | 是否随机切换动作 |
-| `interval` | number | 随机切换间隔（秒），生效范围 15 / 30 / 60 |
+| `interval` | number | 随机切换间隔（秒），可选 180 / 600 / 900 |
 | `action` | string | 启动时恢复的待机动作 id（只记录可手动播放的动作） |
 | `snap` | bool | 是否吸附窗口边缘（与 `gravity` 互斥） |
 | `gravity` | bool | 是否开启重力掉落（吸附开着时不可开） |
+| `snapOffsetUprightSmall` / `Medium` / `Large` | number | 小/中/大档正坐吸附到窗口/任务栏时，接触点额外下移量（逻辑像素，默认 20 / 27 / 40） |
+| `snapOffsetSideSmall` / `Medium` / `Large` | number | 小/中/大档侧坐吸附到窗口/任务栏时，接触点额外下移量（逻辑像素，默认 6 / 8 / 12） |
 
 > `snap` / `gravity` 互斥：开吸附自动关重力；重力开着时无法开吸附。已在 Rust `save_cfg` 里强制。
 
@@ -254,7 +361,7 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 
 新增一个动作只需三步：
 
-1. 把 webm 放进 `src/assets/idle/`（过渡动画放 `src/assets/trans/`）；
+1. 把持续循环的待机 webm 放进 `src/assets/idle/`；一次性动作放 `src/assets/oneshot/`；过渡动画放 `src/assets/trans/`；
 2. 在 `manifest.json` 对应的 pool（`idle` / `trans` / `panic`）里加一条；
 3. 重新 `cargo build`。
 
@@ -267,20 +374,22 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 | `posture` | `"stand"` 站姿 / `"sit"` 坐姿（决定吸附/掉落/分组） |
 | `sitKind` | 仅坐姿：`"upright"` 正坐 / `"side"` 侧坐（区分正坐与侧坐） |
 | `scale` | 出厂缩放（定稿值见下节） |
-| `offset` | 出厂上下偏移（CSS px，坐姿 / 慌张定稿 12.8，站姿/过渡默认 0） |
+| `offset` | 出厂上下偏移（CSS px；正坐 13.5 / 侧坐 13.9 / 慌张 12.5，站姿/过渡默认 0） |
 | `transition` | 仅过渡动画：`{ "from", "to" }` 用 `stand` / `sit_upright` / `sit_side` 描述姿态方向 |
-| `loop` | 是否循环（待机 `true`，过渡/慌张 `false`，播一次） |
-| `playable` | 是否可手动播放（待机 `true`，过渡/慌张 `false`，只由状态机内部触发） |
+| `loop` | 是否循环（待机 `true`；一次性动作/过渡/慌张 `false`，播一次） |
+| `playable` | 是否进入随机池（待机与一次性动作为 `true`；过渡/慌张为 `false`，只由状态机内部触发） |
 | `file` | 视频相对路径 |
 | `fps` / `frames` / `duration` | 元数据 |
 
-`playable=false` 的动作不会出现在工具箱动作池里，也不能手动播放，只在状态机内部自动使用。
+`playable=false` 的动作不会出现在随机池里，也不能手动播放，只在状态机内部自动使用。普通工具箱只展示站立/正坐/侧坐三个姿态入口；一次性动作由随机、AI、点击互动或重力事件触发，播放一次后回到待机。
 
 ---
 
 ## 动作与缩放 / 偏移
 
-### 待机动作（6 个，可手动播放、随机切换）
+> 当前 `manifest.json` 共 25 条：6 个持续待机、12 个一次性动作（擦汗/撩头发/生气/捂嘴笑）、6 条过渡、1 个慌张。下表只列基础动作，完整 id 以 `src/assets/manifest.json` 为准。
+
+### 待机动作（6 个，持续循环，参与随机切换）
 
 | id | 名称 | 姿态 | 坐姿细分 | 缩放 | 偏移 |
 |---|---|---|---|---|---|
@@ -288,8 +397,8 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 | `stand_flower` | 站姿鲜花 | 站姿 | — | 0.995 | 0 |
 | `stand_phone` | 站姿手机 | 站姿 | — | 0.97 | 0 |
 | `stand_book` | 站姿书籍 | 站姿 | — | 0.97 | 0 |
-| `sit_idle` | 正坐待机 | 坐姿 | upright 正坐 | 0.875 | 12.8 |
-| `sit_lean` | 侧坐单手撑 | 坐姿 | side 侧坐 | 0.875 | 12.8 |
+| `sit_idle` | 正坐待机 | 坐姿 | upright 正坐 | 0.875 | 13.5 |
+| `sit_lean` | 侧坐单手撑 | 坐姿 | side 侧坐 | 0.876 | 13.9 |
 
 ### 过渡动画（6 个，仅状态机自动播放，不出现在动作池）
 
@@ -306,11 +415,10 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 
 | id | 名称 | 姿态 | 缩放 | 偏移 |
 |---|---|---|---|---|
-| `sit_panic` | 正坐慌张挥手 | 坐姿（正坐） | 0.88 | 12.8 |
-
+| `sit_panic` | 正坐慌张挥手 | 坐姿（正坐） | 0.875 | 12.5 |
 ### 上下偏移 `offset`
 
-坐姿动作（含慌张）的视频素材接地线与站姿存在微小落差，用 CSS 垂直偏移校正（`translate(-50%, calc(-50% + offset px))`）。定稿值 12.8 写死在 `manifest.json` 的 `offset` 字段；慌张挥手还可在开发者面板微调，覆盖值存 localStorage（键 `role2pet.actionOffsets.v1`）。
+坐姿动作（含慌张）的视频素材接地线与站姿存在微小落差，用 CSS 垂直偏移校正（`translate(-50%, calc(-50% + offset px))`）。定稿值写死在 `manifest.json` 的 `offset` 字段：正坐 13.5 / 侧坐 13.9 / 慌张 12.5；开发者面板可继续微调，覆盖值存 localStorage（键 `role2pet.actionOffsets.v1`）。
 
 > 说明：早期版本的「坐姿下沉 sink」机制（按坐姿类型 × 档位额外下压、配合 Rust `set_contact` 的 `sink` 参数）已彻底移除，统一改为上述 CSS `offset` 方案。
 
@@ -337,8 +445,8 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 
 **C. 慌张 / 一次性动作（事件触发）**
 
-1. 视频放进 `src/assets/idle/`（或对应目录）；
-2. 在 `manifest.json` 新建或复用 `pools.panic`，`loop: false`、`playable: false`；
+1. 视频放进 `src/assets/oneshot/`；
+2. 在 `manifest.json` 的 `pools.idle.items` 里加一条，`loop: false`、`playable: true`；慌张动作放 `pools.panic`，`loop: false`、`playable: false`；
 3. 触发点目前在 `main.js` 的 `playPanic()`（监听 Rust 的 `pet:panic` 事件），要换触发逻辑就改这里。
 
 > 所有动作的 `fps` / `frames` / `duration` 是元数据，目前只作参考、不参与逻辑；`scale` 是「相对容器满铺的比例」，1 = 铺满 1024 容器。
@@ -418,7 +526,7 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 
 ### 动作切换、状态机与内存释放
 
-动作切换走**姿态状态机**：用细分姿态 `granular ∈ { stand, sit_upright, sit_side }` 驱动。待机动作（`playable=true`）可手动点选、可随机切换；过渡动画（`playable=false`）只在姿态变化时自动播一次（站 ↔ 坐、正坐 ↔ 侧坐），同姿态内切换不播过渡；慌张挥手只在重力掉落到任务栏瞬间触发一次，结束后随机落定正坐或侧坐。
+动作切换走**姿态状态机**：用细分姿态 `granular ∈ { stand, sit_upright, sit_side }` 驱动。普通界面只手动切换三个姿态；待机动作（空手/持花/手机/书籍/正坐/侧坐）持续循环，其他动作（擦汗/撩头发/生气/捂嘴笑/慌张挥手）播放一次后回到待机。过渡动画（`playable=false`）只在姿态变化时自动播一次（站 ↔ 坐、正坐 ↔ 侧坐），同姿态内切换不播过渡；慌张挥手只在重力掉落到任务栏瞬间触发一次，结束后随机落定正坐或侧坐。
 
 两层 `<video>` 交叉淡入（`opacity` 过渡，300ms）。切换完成后把闲置层 `removeAttribute('src') + load()`，彻底释放已解码帧的 GPU/渲染进程内存——解决「切换动作后显存不释放」的问题。
 
@@ -498,6 +606,7 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 | `MAX_FALL_SPEED` | 4200 | 下落速度上限（px/s） |
 | `RESTITUTION` | 0.22 | 落地反弹系数 |
 | `BOUNCE_MIN` | 260 | 反弹速度阈值（低于此直接坐稳，不弹跳） |
+| `PANIC_MIN_DROP_PX` | 200 | 触发落地慌张的最小下落高度（逻辑像素） |
 | `EDGE_TOL` | 2 | 跨边判定容差（像素） |
 | `TOOLBOX_W` / `TOOLBOX_H` | 600 / 400 | 工具箱窗口尺寸 |
 
@@ -550,7 +659,7 @@ cargo run --bin winscan
 
 ## 未来规划
 
-语音对话、大模型接入、屏幕感知、桌面特效等方向记录在 [`可选功能.md`](./可选功能.md)，本 README 只描述已实现的部分。
+语音对话、屏幕感知、桌面特效等方向记录在 [`可选功能.md`](./可选功能.md)，本 README 只描述已实现的部分。
 
 ---
 

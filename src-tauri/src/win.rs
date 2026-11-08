@@ -248,6 +248,20 @@ unsafe fn probe_inner(
         return Err("no_title".into());
     }
     let title = String::from_utf16_lossy(&tbuf[..tn as usize]);
+    // 两个桌宠窗口不能互相当作“可坐边”，否则移动一只会让另一只跟着掉。
+    const PET_WINDOW_TITLES: &[&str] = &[
+        "Raven pet",
+        "Suki pet",
+        "Raven 工具箱",
+        "Suki 工具箱",
+        "Raven · AI 聊天",
+        "Suki · AI 聊天",
+        "Raven · 配置 API Key",
+        "Suki · 配置 API Key",
+    ];
+    if PET_WINDOW_TITLES.iter().any(|pet| *pet == title) {
+        return Err("pet_window".into());
+    }
 
     // 取可见边界：DWM 的 EXTENDED_FRAME_BOUNDS 不受 Win10 的隐形边框影响
     let mut r = RECT {

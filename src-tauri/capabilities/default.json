@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "桌宠窗口与工具箱窗口的基础权限：核心事件收发（pet:command / pet:state / pet:posture）、窗口控制。",
-  "windows": ["pet", "toolbox"],
+  "description": "Raven 桌宠、工具箱、AI 聊天与配置页的基础权限。",
+  "windows": ["pet", "toolbox", "chat", "setup"],
   "permissions": [
     "core:event:default",
     "core:window:default",

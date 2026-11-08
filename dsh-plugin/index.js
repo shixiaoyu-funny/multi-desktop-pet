@@ -22,6 +22,7 @@ const ASSET_PREFIX = `${PREFIX}/assets`
 const ACTIVITY_PATH = `${PREFIX}/activity`
 const STREAM_PATH = `${PREFIX}/activity/stream`
 const ACTIVE_PATH = `${PREFIX}/active-session`
+const BALANCE_PATH = `${PREFIX}/balance`
 
 const PLUGIN_DIR = path.dirname(fileURLToPath(import.meta.url))
 /** Packaged layout first; otherwise the Tauri project next door. */
@@ -41,6 +42,9 @@ const SEARCH_TOOL = /(^|[_\-.])(web|search|fetch|browse|lookup|query)/i
 /** One working pose for every non-search activity; search switches to the book. */
 const WORK_ACTION = 'stand_phone'
 const SEARCH_ACTION = 'stand_book'
+/** One-shot mood actions after a turn settles. */
+const DONE_ACTION = 'stand_hair'
+const FAIL_ACTION = 'stand_angry'
 const WORK_LINE = '工作中…'
 const SEARCH_LINE = '查资料…'
 
@@ -166,7 +170,7 @@ function serveAsset(req, res, root) {
 /** Coarse activity state broadcast to every connected page. */
 function createActivity() {
   const clients = new Set()
-  let current = { phase: 'idle', mode: null, action: null, tool: null, line: null, sessionId: null, at: 0 }
+  let current = { phase: 'idle', mode: null, action: null, tool: null, line: null, sessionId: null, once: false, at: 0 }
 
   const write = (res, payload) => {
     try {
@@ -182,6 +186,7 @@ function createActivity() {
       || next.tool !== current.tool
       || next.line !== current.line
       || next.action !== current.action
+      || next.once !== current.once
     current = { ...next, at: Date.now() }
     if (!changed) return
     for (const res of [...clients]) write(res, current)
@@ -245,6 +250,7 @@ function createProjector(activity) {
       action: search ? SEARCH_ACTION : WORK_ACTION,
       tool,
       line: search ? SEARCH_LINE : WORK_LINE,
+      once: false,
     })
   }
 
@@ -254,7 +260,24 @@ function createProjector(activity) {
     runtime.phase = 'idle'
     runtime.mode = null
     runtime.tool = null
-    activity.publish({ phase: 'idle', sessionId: String(session.id), mode: null, action: null, tool: null, line })
+    activity.publish({ phase: 'idle', sessionId: String(session.id), mode: null, action: null, tool: null, line, once: false })
+  }
+
+  const publishDone = (session) => {
+    display = session
+    const runtime = runtimeOf(session)
+    runtime.phase = 'done'
+    runtime.mode = null
+    runtime.tool = null
+    activity.publish({
+      phase: 'done',
+      sessionId: String(session.id),
+      mode: null,
+      action: DONE_ACTION,
+      tool: null,
+      line: '搞定！',
+      once: true,
+    })
   }
 
   const publishFailed = (session) => {
@@ -263,7 +286,15 @@ function createProjector(activity) {
     runtime.phase = 'failed'
     runtime.mode = null
     runtime.tool = null
-    activity.publish({ phase: 'failed', sessionId: String(session.id), mode: null, action: null, tool: null, line: '出错了…' })
+    activity.publish({
+      phase: 'failed',
+      sessionId: String(session.id),
+      mode: null,
+      action: FAIL_ACTION,
+      tool: null,
+      line: '出错了…',
+      once: true,
+    })
   }
 
   const setActiveSession = (id) => {
@@ -271,7 +302,7 @@ function createProjector(activity) {
     activeSessionId = id
     display = undefined
     sessions.clear()
-    activity.publish({ phase: 'idle', sessionId: id, mode: null, action: null, tool: null, line: null })
+    activity.publish({ phase: 'idle', sessionId: id, mode: null, action: null, tool: null, line: null, once: false })
   }
 
   const ignored = (session) => session?.header?.origin === 'subagent'
@@ -321,7 +352,7 @@ function createProjector(activity) {
         runtime.activeTools.clear()
         switch (event.data.reason?.kind) {
           case 'completed':
-            publishIdle(session, '搞定！')
+            publishDone(session)
             break
           case 'error':
           case 'max-tokens':
@@ -363,14 +394,14 @@ function createProjector(activity) {
     if (activeSessionId !== null && String(session.id) === activeSessionId) {
       activeSessionId = null
       display = undefined
-      activity.publish({ phase: 'idle', sessionId: null, mode: null, action: null, tool: null, line: null })
+      activity.publish({ phase: 'idle', sessionId: null, mode: null, action: null, tool: null, line: null, once: false })
       return
     }
     if (display !== session) return
     display = undefined
     const remaining = [...sessions.keys()].at(-1)
     if (remaining === undefined) {
-      activity.publish({ phase: 'idle', mode: null, action: null, tool: null, line: null })
+      activity.publish({ phase: 'idle', mode: null, action: null, tool: null, line: null, once: false })
       return
     }
     const runtime = sessions.get(remaining)
@@ -378,6 +409,8 @@ function createProjector(activity) {
       publishWorking(remaining, { search: runtime.mode === 'search', tool: runtime.tool })
     } else if (runtime.phase === 'failed') {
       publishFailed(remaining)
+    } else if (runtime.phase === 'done') {
+      publishDone(remaining)
     } else {
       publishIdle(remaining)
     }
@@ -504,6 +537,62 @@ export function apply(ctx) {
       },
     })
 
+    const offBalance = ctx.webServer.register({
+      kind: 'exact',
+      path: BALANCE_PATH,
+      handler: async (req, res) => {
+        if (!isLoopback(req)) {
+          res.writeHead(403).end('forbidden')
+          return
+        }
+        const account = ctx.get('deepseekAccount')
+        if (account === undefined) {
+          sendJson(res, 200, { ok: false, reason: 'account-unavailable' })
+          return
+        }
+        try {
+          const state = await account.getState()
+          if (state?.status !== 'credential-stored') {
+            sendJson(res, 200, { ok: false, reason: 'signed-out' })
+            return
+          }
+          const details = await account.getBalance({
+            version: process.env.DSH_VERSION ?? '0.2.2-rc.1',
+            locale: 'zh-CN',
+            timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60,
+          })
+          if (details === null) {
+            sendJson(res, 200, { ok: false, reason: 'signed-out' })
+            return
+          }
+          if (details.status !== 'ready') {
+            sendJson(res, 200, { ok: false, reason: 'balance-failed' })
+            return
+          }
+          const wallets = Array.isArray(details.value) ? details.value : []
+          const bonusWallets = Array.isArray(details.bonusWallets) ? details.bonusWallets : []
+          const wallet = wallets.find((entry) => entry.currency === 'CNY') ?? wallets[0]
+          if (wallet === undefined) {
+            sendJson(res, 200, { ok: false, reason: 'no-wallet' })
+            return
+          }
+          sendJson(res, 200, {
+            ok: true,
+            currency: wallet.currency,
+            balance: wallet.balance,
+            wallets,
+            bonusWallets,
+          })
+        } catch (error) {
+          sendJson(res, 200, {
+            ok: false,
+            reason: 'error',
+            message: String(error?.message ?? error),
+          })
+        }
+      },
+    })
+
     const offSession = ctx.on('session/event', (session, event) => {
       projector.onSessionEvent(session, event)
     })
@@ -514,13 +603,14 @@ export function apply(ctx) {
       projector.onDisposed(session)
     })
 
-    console.log(`[role2-pet] assets: ${root ?? '(missing)'}`)
+    console.log(`[raven-pet] assets: ${root ?? '(missing)'}`)
 
     return () => {
       offAsset()
       offActivity()
       offStream()
       offActive()
+      offBalance()
       offSession()
       offStreamEvents()
       offDisposed()

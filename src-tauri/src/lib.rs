@@ -16,6 +16,11 @@
 //!  s 是当前动作的显示缩放（站姿 1、坐姿 0.88）。前端在切动作时把这个 s
 //!  和接地线比例通过 `set_contact` 告诉 Rust，Rust 才知道该把哪儿贴到边上。
 
+pub mod ambient;
+pub mod apps;
+pub mod chat;
+pub mod tools;
+pub mod tts;
 pub mod win;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -39,6 +44,10 @@ const PERCH_STILL_TICKS: u32 = 10;
 /// 窗口正处于移动/重绘）不算，避免坐在边上时莫名掉下去。
 const PERCH_LOST_TICKS: u32 = 4;
 
+/// 下落超过这个高度（逻辑像素）才触发落地慌张
+const PANIC_MIN_DROP_PX: f64 = 200.0;
+/// 慌张动画提前量：接触点距任务栏 5px 时就触发，不等真正触底。
+const PANIC_TRIGGER_AHEAD_PX: f64 = 5.0;
 /// 吸附半径（逻辑像素，运行时乘 DPI 缩放）。
 /// 80 是实测比较舒服的"随手一放就贴上"的范围：太小要精准对准，太大会把
 /// 还没想放的地方也吸住。
@@ -60,6 +69,9 @@ const BOUNCE_MIN: f64 = 260.0;
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct Cfg {
+    /// 配置迁移版本：v2 起默认开启 60 秒空闲轮换
+    #[serde(default)]
+    pub version: u32,
     pub size: String,
     pub cx: Option<f64>,
     pub cy: Option<f64>,
@@ -73,20 +85,65 @@ pub struct Cfg {
     /// 重力掉落（snap 开启时强制关闭）
     #[serde(default)]
     pub gravity: bool,
+    /// 吸附到窗口/任务栏时，正坐接触点的额外垂直偏移（逻辑像素，正数向下）
+    #[serde(default = "default_snap_upright_small")]
+    pub snap_offset_upright_small: f64,
+    #[serde(default = "default_snap_upright_medium")]
+    pub snap_offset_upright_medium: f64,
+    #[serde(default = "default_snap_upright_large")]
+    pub snap_offset_upright_large: f64,
+    /// 吸附到窗口/任务栏时，侧坐接触点的额外垂直偏移（逻辑像素，正数向下）
+    #[serde(default = "default_snap_side_small")]
+    pub snap_offset_side_small: f64,
+    #[serde(default = "default_snap_side_medium")]
+    pub snap_offset_side_medium: f64,
+    #[serde(default = "default_snap_side_large")]
+    pub snap_offset_side_large: f64,
+}
+
+fn default_snap_upright_small() -> f64 {
+    20.0
+}
+
+fn default_snap_upright_medium() -> f64 {
+    27.0
+}
+
+fn default_snap_upright_large() -> f64 {
+    40.0
+}
+
+fn default_snap_side_small() -> f64 {
+    6.0
+}
+
+fn default_snap_side_medium() -> f64 {
+    8.0
+}
+
+fn default_snap_side_large() -> f64 {
+    12.0
 }
 
 impl Default for Cfg {
     fn default() -> Self {
         Self {
+            version: 2,
             size: "medium".into(),
             cx: None,
             cy: None,
             always_on_top: true,
-            random: false,
-            interval: 20,
+            random: true,
+            interval: 180,
             action: "stand_idle".into(),
             snap: false,
             gravity: false,
+            snap_offset_upright_small: 20.0,
+            snap_offset_upright_medium: 27.0,
+            snap_offset_upright_large: 40.0,
+            snap_offset_side_small: 6.0,
+            snap_offset_side_medium: 8.0,
+            snap_offset_side_large: 12.0,
         }
     }
 }
@@ -181,6 +238,8 @@ struct Pet {
     /// Rust 这边自己按容器 1024 推会算错（512 档位下能差 185px）。
     contact_off: f64,
     char_h: f64,
+    /// 当前细分姿态：stand / sit_upright / sit_side，用于选择吸附坐线偏移
+    sit_kind: String,
     /// 当前 DPI 缩放，用于把 SNAP_PX 换成本地像素
     dpi: f64,
     last_tick: Instant,
@@ -200,6 +259,10 @@ struct Pet {
     /// 有它时下落过程仍然跟着宿主横向平移（人是踩着边掉下去的，不是原地直坠）；
     /// 真正的自由落体（窗口被关掉、支撑范围不在了）这里为 None。
     fall_follow: Option<(isize, f64)>,
+    /// 本次下落开始时的接触点 y；落地时用它算下落高度，决定是否触发慌张
+    fall_start_y: Option<f64>,
+    /// 本次下落是否已经提前发过慌张事件（5px 预触发后落地不重复播）
+    panic_fired: bool,
 }
 
 /// 默认档位（medium 512）、站姿缩放下的默认接触点（前端还没同步过时用）
@@ -232,6 +295,31 @@ impl Pet {
 
     fn snap_radius(&self) -> f64 {
         SNAP_PX * self.dpi
+    }
+
+    /// 吸附坐线微调：按当前坐姿分别取值，逻辑像素换算到当前 DPI 的物理像素。
+    /// 只在 Perched 的定位路径里调用；自由站立/下落不受影响。
+    fn snap_shift(&self) -> f64 {
+        let (upright, side) = match self.cfg.size.as_str() {
+            "large" => (
+                self.cfg.snap_offset_upright_large,
+                self.cfg.snap_offset_side_large,
+            ),
+            "medium" => (
+                self.cfg.snap_offset_upright_medium,
+                self.cfg.snap_offset_side_medium,
+            ),
+            _ => (
+                self.cfg.snap_offset_upright_small,
+                self.cfg.snap_offset_side_small,
+            ),
+        };
+        let logical = match self.sit_kind.as_str() {
+            "sit_upright" => upright,
+            "sit_side" => side,
+            _ => 0.0,
+        };
+        logical.clamp(-50.0, 50.0) * self.dpi
     }
 }
 
@@ -515,6 +603,7 @@ fn start_drag(win: WebviewWindow, state: tauri::State<'_, Shared>) {
     pet.mode = Mode::Drag;
     pet.perch = None;
     pet.vy = 0.0;
+    pet.fall_start_y = None;
     pet.drag_off = (cursor.x - pos.x as f64, cursor.y - pos.y as f64);
     // 被拎起来 = 站起来
     pet.last_sit = None;
@@ -526,7 +615,7 @@ fn end_drag(win: WebviewWindow, app: AppHandle, state: tauri::State<'_, Shared>)
     let outer = win.outer_position().ok();
 
     // ——— 锁内：只更新状态，不碰窗口 ———
-    let (off_y, cx, cy, snap_on, gravity_on) = {
+    let (off_y, cx, cy, snap_on, gravity_on, snap_shift) = {
         let mut pet = match state.lock() {
             Ok(g) => g,
             Err(_) => return,
@@ -548,6 +637,7 @@ fn end_drag(win: WebviewWindow, app: AppHandle, state: tauri::State<'_, Shared>)
             p.y as f64 + off_y,
             pet.cfg.snap,
             pet.cfg.gravity,
+            pet.snap_shift(),
         )
     }; // ← 锁在这里释放
 
@@ -578,7 +668,7 @@ fn end_drag(win: WebviewWindow, app: AppHandle, state: tauri::State<'_, Shared>)
     if let (Some(p), Some((tx, ty))) = (perch, target) {
         // 立刻贴上去，别等下一帧 —— set_position 在锁外
         let left = tx - CONTAINER_PX / 2.0;
-        let top = ty - off_y;
+        let top = ty - off_y + snap_shift;
         let _ = win.set_position(Position::Physical(PhysicalPosition::new(
             left.round() as i32,
             top.round() as i32,
@@ -587,13 +677,14 @@ fn end_drag(win: WebviewWindow, app: AppHandle, state: tauri::State<'_, Shared>)
             Ok(g) => g,
             Err(_) => return,
         };
-        pet.store_center(tx, ty);
+        pet.store_center(tx, ty + snap_shift);
         pet.applied = Some((left, top));
         pet.perch = Some(p);
         pet.perch_last = None;
         pet.perch_still = 0;
         pet.mode = Mode::Perched;
         pet.vy = 0.0;
+        pet.fall_start_y = None;
         sit = take_posture(&mut pet, true);
     } else if gravity_on {
         // 从松手这一刻就开始掉，并且立刻切成坐姿
@@ -605,6 +696,8 @@ fn end_drag(win: WebviewWindow, app: AppHandle, state: tauri::State<'_, Shared>)
         pet.perch = None;
         pet.vy = 0.0;
         pet.applied = None;
+        pet.fall_start_y = Some(cy);
+        pet.panic_fired = false;
         sit = take_posture(&mut pet, true);
     } else {
         let mut pet = match state.lock() {
@@ -613,6 +706,7 @@ fn end_drag(win: WebviewWindow, app: AppHandle, state: tauri::State<'_, Shared>)
         };
         pet.mode = Mode::Free;
         pet.applied = None;
+        pet.fall_start_y = None;
         sit = take_posture(&mut pet, false);
     }
 
@@ -628,6 +722,41 @@ fn set_always_on_top(on: bool, win: WebviewWindow, state: tauri::State<'_, Share
     let mut pet = state.lock().unwrap();
     pet.cfg.always_on_top = on;
     pet.save();
+}
+
+#[tauri::command]
+fn set_snap_offset(kind: String, size: String, value: f64, state: tauri::State<'_, Shared>) {
+    let value = value.clamp(-50.0, 50.0);
+    let size = match size.as_str() {
+        "medium" => "medium",
+        "large" => "large",
+        _ => "small",
+    };
+    let mut pet = state.lock().unwrap();
+    match (kind.as_str(), size) {
+        ("side", "medium") => pet.cfg.snap_offset_side_medium = value,
+        ("side", "large") => pet.cfg.snap_offset_side_large = value,
+        ("side", _) => pet.cfg.snap_offset_side_small = value,
+        (_, "medium") => pet.cfg.snap_offset_upright_medium = value,
+        (_, "large") => pet.cfg.snap_offset_upright_large = value,
+        (_, _) => pet.cfg.snap_offset_upright_small = value,
+    }
+    // 下一轮轮询按新的坐线偏移重新摆位
+    pet.applied = None;
+    pet.save();
+}
+
+#[tauri::command]
+fn set_sit_kind(kind: String, state: tauri::State<'_, Shared>) {
+    let next = match kind.as_str() {
+        "sit_upright" | "sit_side" => kind,
+        _ => "stand".to_string(),
+    };
+    let mut pet = state.lock().unwrap();
+    if pet.sit_kind != next {
+        pet.sit_kind = next;
+        pet.applied = None;
+    }
 }
 
 #[tauri::command]
@@ -657,7 +786,7 @@ fn show_toolbox(app: &AppHandle) {
         TOOLBOX_LABEL,
         tauri::WebviewUrl::App("toolbox.html".into()),
     )
-    .title("role2 工具箱")
+    .title("Raven 工具箱")
     .inner_size(TOOLBOX_W, TOOLBOX_H)
     .min_inner_size(480.0, 320.0)
     .resizable(true)
@@ -687,7 +816,7 @@ fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
     let menu = Menu::with_items(app, &[&open, &quit])?;
 
     let mut builder = TrayIconBuilder::with_id("pet-tray")
-        .tooltip("role2 桌宠")
+        .tooltip("Raven 桌宠")
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -972,6 +1101,7 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                             // 本轮宿主读到了，失败计数清零
                             pet.perch_lost = 0;
                             let off_y = pet.contact_off_y();
+                            let snap_shift = pet.snap_shift();
 
                             // 支撑判定 —— 坐在窗口上沿，支撑就是"上沿还在脚底下"：
                             //  · 上沿往下走了 → 平台从脚底抽走，开始跟着掉（不是黏在一起）
@@ -998,6 +1128,7 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                             if pet.cfg.gravity && (dropped || horiz_gone) {
                                 let hwnd = pet.perch.as_ref().map(|p| p.hwnd).unwrap_or(0);
                                 let off = pet.perch.as_ref().map(|p| p.offset_x).unwrap_or(0.0);
+                                let fall_start = ty + pet.snap_shift();
                                 pet.perch = None;
                                 pet.perch_last = None;
                                 pet.perch_still = 0;
@@ -1005,6 +1136,8 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                                 pet.applied = None;
                                 pet.mode = Mode::Falling;
                                 pet.vy = 0.0;
+                                pet.fall_start_y = Some(fall_start);
+                                pet.panic_fired = false;
                                 // 平台被抽走：下落时继续跟着宿主横移（同一竖列往下掉）
                                 // 支撑范围没了：真自由落体，让她掉到下面那个窗口/任务栏
                                 pet.fall_follow = if !horiz_gone && hwnd != 0 {
@@ -1035,7 +1168,7 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                                     tx = tx.max(lo).min(hi);
                                 }
                                 let left = tx - CONTAINER_PX / 2.0;
-                                let top = ty - off_y;
+                                let top = ty - off_y + snap_shift;
                                 if pet
                                     .applied
                                     .map(|(x, y)| (x - left).abs() > 0.5 || (y - top).abs() > 0.5)
@@ -1044,7 +1177,7 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                                     plan.pos = Some((left.round(), top.round()));
                                     pet.applied = Some((left, top));
                                 }
-                                pet.store_center(tx, ty);
+                                pet.store_center(tx, ty + snap_shift);
                                 // 关键：坐姿态也必须按掩膜判定穿透，否则整个透明容器都可点
                                 update_ignore(
                                     &mut pet,
@@ -1069,8 +1202,11 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                                 pet.applied = None;
                                 pet.fall_follow = None;
                                 let fall = pet.cfg.gravity;
+                                let fall_start = wpos.1 + pet.contact_off_y();
                                 pet.mode = if fall { Mode::Falling } else { Mode::Free };
                                 pet.vy = 0.0;
+                                pet.fall_start_y = if fall { Some(fall_start) } else { None };
+                                pet.panic_fired = false;
                                 plan.posture = take_posture(&mut pet, fall);
                             }
                             acted = true;
@@ -1083,6 +1219,7 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                             win_tops,
                         } if pet.mode == Mode::Falling => {
                             let off_y = pet.contact_off_y();
+                            let snap_shift = pet.snap_shift();
                             // 先按显示器夹紧再算任何相对量：offset_x 必须是"夹紧后"的
                             // 接触点相对窗口左沿的偏移，否则窗口贴着屏幕边时 offset_x 会
                             // 落到窗口范围之外，坐下第一帧就被判成"支撑没了"又掉下去。
@@ -1091,6 +1228,27 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                             let prev_cy = cy;
                             pet.vy = (pet.vy + GRAVITY * dt).min(MAX_FALL_SPEED);
                             cy += pet.vy * dt;
+
+                            // 距任务栏接触点 ≤5px 就提前播慌张；不等这一帧真正落地。
+                            // 若中间还有窗口上沿可接住，则不提前触发，避免落窗也慌张。
+                            if pet.vy > 0.0 && !pet.panic_fired {
+                                let gap = ground_y - cy;
+                                let window_ahead = win_tops
+                                    .iter()
+                                    .any(|wt| wt.top >= cy && wt.top <= ground_y);
+                                if gap > 0.0
+                                    && gap <= PANIC_TRIGGER_AHEAD_PX * pet.dpi
+                                    && !window_ahead
+                                {
+                                    let drop = pet.fall_start_y
+                                        .map(|start| cy - start)
+                                        .unwrap_or(0.0);
+                                    if drop > PANIC_MIN_DROP_PX * pet.dpi {
+                                        pet.panic_fired = true;
+                                        plan.panic = true;
+                                    }
+                                }
+                            }
 
                             // 这一帧穿越的可落边：任务栏地面 + 窗口上边缘，取 y 最小的
                             // （最靠上、最先碰到的）。落上去就和坐在任务栏上效果一致。
@@ -1143,10 +1301,19 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                                 } else {
                                     pet.vy = 0.0;
                                     pet.mode = Mode::Perched;
-                                    // 只有落到**任务栏**才触发落地慌张反应；窗口上沿落座不触发
-                                    if lp.kind == PerchKind::Taskbar {
+                                    // 只有从超过 200px 的高度落到**任务栏**才触发慌张；
+                                    // 窗口上沿落座、以及矮距离落下都保持正常坐姿。
+                                    let drop = pet.fall_start_y
+                                        .map(|start| cy - start)
+                                        .unwrap_or(0.0);
+                                    if lp.kind == PerchKind::Taskbar
+                                        && drop > PANIC_MIN_DROP_PX * pet.dpi
+                                        && !pet.panic_fired
+                                    {
                                         plan.panic = true;
                                     }
+                                    pet.panic_fired = false;
+                                    pet.fall_start_y = None;
                                     pet.perch = Some(lp);
                                     pet.perch_last = None;
                                     pet.perch_still = 0;
@@ -1157,10 +1324,11 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
                             }
 
                             let left = cx - CONTAINER_PX / 2.0;
-                            let top = cy - off_y;
+                            let shift = if pet.mode == Mode::Perched { snap_shift } else { 0.0 };
+                            let top = cy - off_y + shift;
                             plan.pos = Some((left.round(), top.round()));
                             pet.applied = Some((left, top));
-                            pet.store_center(cx, cy);
+                            pet.store_center(cx, cy + shift);
                             if pet.ignoring {
                                 pet.ignoring = false;
                                 plan.ignore = Some(false);
@@ -1254,6 +1422,19 @@ pub fn run() {
             if cfg.snap {
                 cfg.gravity = false;
             }
+            // v2：空闲轮换改为默认开启，只轮换三个基础待机
+            if cfg.version < 2 {
+                cfg.version = 2;
+                cfg.random = true;
+                cfg.interval = 180;
+            }
+            // 轮换间隔只允许 3 / 10 / 15 分钟；老配置的 120 秒归一为 3 分钟。
+            if ![180, 600, 900].contains(&cfg.interval) {
+                cfg.interval = 180;
+            }
+
+            app.manage(chat::ChatState::new(dir.clone()));
+            app.manage(tts::TtsState::new(dir.clone()));
 
             let pet = Pet {
                 cfg: cfg.clone(),
@@ -1268,6 +1449,7 @@ pub fn run() {
                 perch: None,
                 contact_off: DEFAULT_OFF_Y,
                 char_h: DEFAULT_CHAR_H,
+                sit_kind: "stand".into(),
                 dpi: 1.0,
                 last_tick: Instant::now(),
                 last_sit: None,
@@ -1276,6 +1458,8 @@ pub fn run() {
                 perch_still: 0,
                 perch_lost: 0,
                 fall_follow: None,
+                fall_start_y: None,
+                panic_fired: false,
             };
             let shared: Shared = Arc::new(Mutex::new(pet));
             app.manage(shared.clone());
@@ -1324,6 +1508,21 @@ pub fn run() {
                 place(&win, cx, cy);
                 let _ = win.set_always_on_top(cfg.always_on_top);
                 let _ = win.set_ignore_cursor_events(true);
+                #[cfg(windows)]
+                if let Ok(hwnd) = win.hwnd() {
+                    use windows_sys::Win32::UI::WindowsAndMessaging::{
+                        GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE,
+                        WS_EX_TOOLWINDOW,
+                    };
+                    unsafe {
+                        let ex = GetWindowLongPtrW(hwnd.0, GWL_EXSTYLE);
+                        let _ = SetWindowLongPtrW(
+                            hwnd.0,
+                            GWL_EXSTYLE,
+                            ex | WS_EX_NOACTIVATE as isize | WS_EX_TOOLWINDOW as isize,
+                        );
+                    }
+                }
                 shared.lock().unwrap().ignoring = true;
                 let _ = win.show();
             }
@@ -1338,10 +1537,26 @@ pub fn run() {
                 .unwrap_or(0);
 
             spawn_poller(handle, shared, self_hwnd);
+            ambient::spawn(app.handle().clone());
 
             // 托盘图标：右键出「打开工具箱窗口」「退出」
             if let Err(e) = setup_tray(app.handle()) {
                 eprintln!("[pet] 托盘图标创建失败: {e}");
+            }
+
+            // 仅 debug：RAVEN_OPEN_WINDOW=chat/setup 时自动打开对应窗口，方便本地验证
+            #[cfg(debug_assertions)]
+            if let Ok(target) = std::env::var("RAVEN_OPEN_WINDOW") {
+                let debug_handle = app.handle().clone();
+                std::thread::spawn(move || {
+                    std::thread::sleep(Duration::from_millis(1000));
+                    let inner = debug_handle.clone();
+                    let _ = debug_handle.run_on_main_thread(move || match target.as_str() {
+                        "chat" => chat::show_chat(&inner),
+                        "setup" => chat::show_setup(&inner),
+                        _ => {}
+                    });
+                });
             }
 
             Ok(())
@@ -1356,8 +1571,24 @@ pub fn run() {
             start_drag,
             end_drag,
             set_always_on_top,
+            set_snap_offset,
+            set_sit_kind,
             quit_app,
-            open_toolbox
+            open_toolbox,
+            chat::chat_status,
+            chat::chat_history,
+            chat::chat_clear,
+            chat::chat_send,
+            chat::report_posture,
+            chat::open_chat,
+            chat::open_chat_setup,
+            chat::open_url,
+            ambient::ambient_probe,
+            ambient::ambient_capture_test,
+            tts::tts_status,
+            tts::tts_set_enabled,
+            tts::tts_test,
+            tts::tts_ack
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 启动失败");

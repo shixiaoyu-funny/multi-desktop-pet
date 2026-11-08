@@ -30,6 +30,7 @@ body {
   object-fit: contain;
   background: transparent;
   will-change: opacity;
+  cursor: grab;
 }
 
 .pet.on {
@@ -38,6 +39,49 @@ body {
 
 body.dragging .pet {
   cursor: grabbing;
+}
+
+body.dragging {
+  cursor: grabbing;
+}
+
+/* 互动 / AI 台词气泡 */
+#bubble {
+  position: fixed;
+  left: 50%;
+  top: calc(10% + var(--bubble-offset, 0px));
+  transform: translateX(-50%) translateY(-8px);
+  max-width: 72%;
+  max-height: 26%;
+  overflow: hidden;
+  padding: 10px 15px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #2b2f36;
+  font: 13px/1.5 "Microsoft YaHei", system-ui, sans-serif;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease, transform 180ms ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+#bubble.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.94);
 }
 
 /* 首次提示气泡 */

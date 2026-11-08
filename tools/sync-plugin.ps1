@@ -37,7 +37,7 @@ if (-not (Test-Path $Target)) {
     throw "目标目录不存在：$Target`n（先把插件装好，或手动改成实际路径）"
 }
 $targetPkg = Join-Path $Target 'package.json'
-if (-not (Test-Path $targetPkg) -or -not ((Get-Content $targetPkg -Raw) -match 'role2-pet')) {
+if (-not (Test-Path $targetPkg) -or -not ((Get-Content $targetPkg -Raw) -match 'role2-pet|raven-pet')) {
     throw "目标目录不像 role2 插件目录（package.json 里没有 role2-pet）：$Target"
 }
 
