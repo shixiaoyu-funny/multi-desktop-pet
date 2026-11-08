@@ -1,6 +1,6 @@
 ﻿[package]
 name = "raven-winpet"
-version = "0.2.1"
+version = "0.2.2"
 description = "Raven 閫忔槑 WebM 妗屽疇"
 edition = "2021"
 rust-version = "1.77"
@@ -42,4 +42,5 @@ lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
 
