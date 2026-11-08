@@ -1097,7 +1097,18 @@ pub fn chat_clear(app: AppHandle, state: State<'_, ChatState>) -> Result<Value, 
         *affinity = 0;
     }
     save_affinity(&state.affinity_path, 0);
+    if let Ok(_guard) = state.drink_lock.lock() {
+        let drink = DrinkData {
+            date: today_string(),
+            count: 0,
+        };
+        save_drink(&state.drink_path, &drink);
+    }
     let _ = app.emit("pet:affinity", json!({ "score": 0, "delta": 0 }));
+    let _ = app.emit(
+        "pet:drink-reset",
+        json!({ "count": 0, "limit": 2 }),
+    );
     Ok(json!({ "score": 0 }))
 }
 

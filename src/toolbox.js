@@ -86,6 +86,12 @@ function boot() {
     }
   })
 
+  safeListen('pet:drink-reset', () => {
+    milkTeaCount = 0
+    renderMilkTea()
+    refreshMilkTea()
+  })
+
   // 桌宠窗口可能比这里晚就绪，隔一会儿问一次，问到就停
   let tries = 0
   const ask = () => {
