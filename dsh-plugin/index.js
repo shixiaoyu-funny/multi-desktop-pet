@@ -1,5 +1,5 @@
 /**
- * role2 pet — host half.
+ * Raven pet — host half.
  *
  * Serves the WebM action assets from the original Tauri project (or a packaged
  * `assets/` directory) and projects Session activity into one coarse `phase`
@@ -12,12 +12,12 @@ import { createReadStream, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-export const name = 'role2-pet'
+export const name = 'raven-winpet'
 
 /** The activity surface needs the browser HTTP carrier. */
 export const inject = ['webServer']
 
-const PREFIX = '/role2-pet'
+const PREFIX = '/raven-winpet'
 const ASSET_PREFIX = `${PREFIX}/assets`
 const ACTIVITY_PATH = `${PREFIX}/activity`
 const STREAM_PATH = `${PREFIX}/activity/stream`
@@ -462,7 +462,7 @@ export function apply(ctx) {
       path: ASSET_PREFIX,
       handler: (req, res) => {
         if (root === undefined) {
-          res.writeHead(503).end('role2 pet assets not found')
+          res.writeHead(503).end('Raven pet assets not found')
           return
         }
         serveAsset(req, res, root)
@@ -616,5 +616,5 @@ export function apply(ctx) {
       offDisposed()
       activity.closeAll()
     }
-  }, 'role2-pet: routes and session projection')
+  }, 'raven-winpet: routes and session projection')
 }

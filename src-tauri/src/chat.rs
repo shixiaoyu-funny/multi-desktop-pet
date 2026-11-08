@@ -1068,3 +1068,5 @@ pub fn open_url(url: String) {
             .spawn();
     }
 }
+
+// shixiaoyu-funny原创，详见bilibili：https://space.bilibili.com/517323821?spm_id_from=333.337.0.0，仅供学习，严禁商用

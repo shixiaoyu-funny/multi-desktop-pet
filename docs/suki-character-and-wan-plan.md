@@ -1,6 +1,6 @@
-# role7 角色包核对 + Wan 3.0 Prime 试片计划
+# Suki 角色包核对 + Wan 3.0 Prime 试片计划
 
-## 1. 素材清单（E:\图片\AI_Assets\role7）
+## 1. 素材清单（E:\图片\AI_Assets\Suki）
 
 | 文件 | 尺寸/格式 | 用途 | 注意 |
 |---|---|---|---|

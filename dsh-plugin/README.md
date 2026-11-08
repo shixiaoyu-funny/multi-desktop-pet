@@ -53,7 +53,7 @@ plugin_manager install_bundle → 目标：本目录
 右键桌宠 →「开发者模式」打开面板：
 
 - 列出全部动作（站姿 / 坐姿 / 过渡 / 慌张）；点选即循环预览，手机、书籍、工作、搜索这些平时触发不到的动作也能直接看；
-- 「缩放」「偏移」滑杆实时应用到当前预览动作，数值存在 `localStorage` 的 `role2pet.dev.v1`，刷新后保留；
+- 「缩放」「偏移」滑杆实时应用到当前预览动作，数值存在 `localStorage` 的 `ravenpet.dev.v1`，刷新后保留；
 - 「复位」恢复该动作在 `manifest.json` 里的原值；「复制覆盖值」得到当前所有覆盖的 JSON；
 - 开发者模式打开期间会暂停空闲随机和 AI 抢动作，关闭后回到待机。
 
@@ -89,7 +89,7 @@ plugin_manager install_bundle → 目标：本目录
 
 | 文件 | 作用 |
 |---|---|
-| `index.js` | 宿主半区：`/role2-pet/assets/*` 视频路由（Range/206）、会话活动投影、SSE 推送 |
+| `index.js` | 宿主半区：`/raven-winpet/assets/*` 视频路由（Range/206）、会话活动投影、SSE 推送 |
 | `client.js` | 客户端半区：`shell.overlay` 悬浮桌宠、动作状态机、比例/偏移、拖拽/菜单/气泡 |
 | `cordis.patch.yml` | 插入插件行 |
 | `assets/` | 动作视频、`manifest.json` 与市场图标（随包分发） |

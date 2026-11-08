@@ -7,7 +7,7 @@
 //! 注意：这里必须先把进程 DPI 感知设成和 Tauri 一致（per-monitor v2），
 //! 否则 Windows 会把坐标虚拟化，量出来的数字和桌宠里的对不上。
 
-use role2_pet_lib::win;
+use raven_winpet_lib::win;
 use windows_sys::Win32::UI::HiDpi::{
     SetProcessDpiAwarenessContext, DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2,
 };

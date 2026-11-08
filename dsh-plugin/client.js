@@ -1,5 +1,5 @@
 /**
- * role2 pet — client half.
+ * Raven pet — client half.
  *
  * Renders the pet inside `shell.overlay`. The layer is click-through, so only
  * the pet's own box opts back into pointer events. Action playback mirrors the
@@ -13,9 +13,9 @@ window.__ModuleLoader__.load({
     const h = React.createElement
     const { useEffect, useRef, useState } = React
 
-    const ASSET_BASE = '/role2-pet/assets'
-    const STREAM_URL = '/role2-pet/activity/stream'
-    const STORE_KEY = 'role2pet.v1'
+    const ASSET_BASE = '/raven-winpet/assets'
+    const STREAM_URL = '/raven-winpet/activity/stream'
+    const STORE_KEY = 'ravenpet.v1'
     const FADE_MS = 320
     /** The action manifest's scale/offset are authored against this canvas. */
     const BASE = 1024
@@ -68,45 +68,45 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-      .role2pet-root{position:fixed;inset:0;pointer-events:none;z-index:9999;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
-      .role2pet-dragging,.role2pet-dragging *{cursor:grabbing!important}
-      .role2pet-stage{position:absolute;pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none}
-      .role2pet-stage:active{cursor:grabbing}
-      .role2pet-canvas{position:absolute;left:0;top:0;width:${BASE}px;height:${BASE}px;transform-origin:top left;pointer-events:none;overflow:hidden}
-      .role2pet-video{position:absolute;left:50%;top:50%;object-fit:contain;opacity:0;transition:opacity ${FADE_MS}ms ease;pointer-events:none;background:transparent}
-      .role2pet-video.role2pet-on{opacity:1}
-      .role2pet-bubble{position:absolute;left:50%;bottom:calc(100% - 28px);transform:translateX(-50%);max-width:260px;padding:7px 11px;border-radius:12px;background:rgba(255,255,255,.94);color:#2b2f36;font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none;opacity:0;transition:opacity 180ms ease}
-      .role2pet-bubble.role2pet-on{opacity:1}
-      .role2pet-bubble:after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:6px solid transparent;border-top-color:rgba(255,255,255,.94)}
-      .role2pet-menu{position:fixed;width:152px;min-width:0;box-sizing:border-box;padding:6px;border-radius:10px;background:#20242c;color:#e8eaf0;box-shadow:0 12px 32px rgba(0,0,0,.35);pointer-events:auto;font-size:12px}
-      .role2pet-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:7px 9px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
-      .role2pet-menu button:hover{background:rgba(255,255,255,.1)}
-      .role2pet-menu .role2pet-sep{height:1px;margin:5px 4px;background:rgba(255,255,255,.12)}
-      .role2pet-menu .role2pet-dim{color:#9aa3b2}
-      .role2pet-choice{display:flex;align-items:center;gap:8px;padding:5px 9px;color:#e8eaf0}
-      .role2pet-choice > span{width:30px;flex:none;color:#9aa3b2}
-      .role2pet-seg{display:flex;flex:1;gap:2px;padding:2px;border-radius:6px;background:rgba(255,255,255,.06)}
-      .role2pet-seg button{display:block;width:auto;flex:1;gap:0;padding:4px 0;border:0;border-radius:4px;background:transparent;color:#9aa3b2;font:inherit;font-size:11px;text-align:center;cursor:pointer}
-      .role2pet-seg button:hover{background:rgba(255,255,255,.08)}
-      .role2pet-seg button.role2pet-on{background:#2f7cf6;color:#fff}
-      .role2pet-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#5ad08a;margin-right:6px}
-      .role2pet-dot.role2pet-off{background:#8a93a3}
-      .role2pet-dev{position:fixed;left:16px;top:16px;width:310px;max-height:calc(100vh - 32px);overflow:auto;padding:10px;border-radius:12px;background:#1c2028;color:#e8eaf0;box-shadow:0 16px 40px rgba(0,0,0,.45);pointer-events:auto;font-size:12px}
-      .role2pet-dev-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-weight:600}
-      .role2pet-dev-head button{border:0;background:transparent;color:inherit;font-size:18px;line-height:1;cursor:pointer}
-      .role2pet-dev-list{max-height:36vh;overflow:auto;padding:4px;margin-bottom:8px;border:1px solid rgba(255,255,255,.09);border-radius:8px}
-      .role2pet-dev-group{padding:4px 6px;color:#8b95a7;font-size:11px}
-      .role2pet-dev-act{display:inline-block;margin:2px;padding:4px 7px;border:1px solid rgba(255,255,255,.13);border-radius:6px;background:transparent;color:inherit;font-size:11px;cursor:pointer}
-      .role2pet-dev-act.role2pet-dev-on{background:#2f7cf6;border-color:#2f7cf6}
-      .role2pet-dev-row{display:flex;align-items:center;gap:8px;margin:6px 0}
-      .role2pet-dev-row span{width:30px;color:#9aa3b2}
-      .role2pet-dev-row input{flex:1;accent-color:#2f7cf6}
-      .role2pet-dev-row b{width:48px;text-align:right;font-weight:500}
-      .role2pet-dev-actions{display:flex;gap:6px;margin-top:8px}
-      .role2pet-dev-actions button{flex:1;padding:6px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:rgba(255,255,255,.06);color:inherit;font-size:11px;cursor:pointer}
-      .role2pet-dev-status{margin-top:6px;min-height:14px;color:#7fd18f;font-size:11px;word-break:break-all}
-      .role2pet-balance{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 9px 2px;color:#9aa3b2}
-      .role2pet-balance b{font-weight:600}
+      .ravenpet-root{position:fixed;inset:0;pointer-events:none;z-index:9999;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+      .ravenpet-dragging,.ravenpet-dragging *{cursor:grabbing!important}
+      .ravenpet-stage{position:absolute;pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none}
+      .ravenpet-stage:active{cursor:grabbing}
+      .ravenpet-canvas{position:absolute;left:0;top:0;width:${BASE}px;height:${BASE}px;transform-origin:top left;pointer-events:none;overflow:hidden}
+      .ravenpet-video{position:absolute;left:50%;top:50%;object-fit:contain;opacity:0;transition:opacity ${FADE_MS}ms ease;pointer-events:none;background:transparent}
+      .ravenpet-video.ravenpet-on{opacity:1}
+      .ravenpet-bubble{position:absolute;left:50%;bottom:calc(100% - 28px);transform:translateX(-50%);max-width:260px;padding:7px 11px;border-radius:12px;background:rgba(255,255,255,.94);color:#2b2f36;font-size:12px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none;opacity:0;transition:opacity 180ms ease}
+      .ravenpet-bubble.ravenpet-on{opacity:1}
+      .ravenpet-bubble:after{content:"";position:absolute;left:50%;top:100%;transform:translateX(-50%);border:6px solid transparent;border-top-color:rgba(255,255,255,.94)}
+      .ravenpet-menu{position:fixed;width:152px;min-width:0;box-sizing:border-box;padding:6px;border-radius:10px;background:#20242c;color:#e8eaf0;box-shadow:0 12px 32px rgba(0,0,0,.35);pointer-events:auto;font-size:12px}
+      .ravenpet-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:7px 9px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+      .ravenpet-menu button:hover{background:rgba(255,255,255,.1)}
+      .ravenpet-menu .ravenpet-sep{height:1px;margin:5px 4px;background:rgba(255,255,255,.12)}
+      .ravenpet-menu .ravenpet-dim{color:#9aa3b2}
+      .ravenpet-choice{display:flex;align-items:center;gap:8px;padding:5px 9px;color:#e8eaf0}
+      .ravenpet-choice > span{width:30px;flex:none;color:#9aa3b2}
+      .ravenpet-seg{display:flex;flex:1;gap:2px;padding:2px;border-radius:6px;background:rgba(255,255,255,.06)}
+      .ravenpet-seg button{display:block;width:auto;flex:1;gap:0;padding:4px 0;border:0;border-radius:4px;background:transparent;color:#9aa3b2;font:inherit;font-size:11px;text-align:center;cursor:pointer}
+      .ravenpet-seg button:hover{background:rgba(255,255,255,.08)}
+      .ravenpet-seg button.ravenpet-on{background:#2f7cf6;color:#fff}
+      .ravenpet-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#5ad08a;margin-right:6px}
+      .ravenpet-dot.ravenpet-off{background:#8a93a3}
+      .ravenpet-dev{position:fixed;left:16px;top:16px;width:310px;max-height:calc(100vh - 32px);overflow:auto;padding:10px;border-radius:12px;background:#1c2028;color:#e8eaf0;box-shadow:0 16px 40px rgba(0,0,0,.45);pointer-events:auto;font-size:12px}
+      .ravenpet-dev-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;font-weight:600}
+      .ravenpet-dev-head button{border:0;background:transparent;color:inherit;font-size:18px;line-height:1;cursor:pointer}
+      .ravenpet-dev-list{max-height:36vh;overflow:auto;padding:4px;margin-bottom:8px;border:1px solid rgba(255,255,255,.09);border-radius:8px}
+      .ravenpet-dev-group{padding:4px 6px;color:#8b95a7;font-size:11px}
+      .ravenpet-dev-act{display:inline-block;margin:2px;padding:4px 7px;border:1px solid rgba(255,255,255,.13);border-radius:6px;background:transparent;color:inherit;font-size:11px;cursor:pointer}
+      .ravenpet-dev-act.ravenpet-dev-on{background:#2f7cf6;border-color:#2f7cf6}
+      .ravenpet-dev-row{display:flex;align-items:center;gap:8px;margin:6px 0}
+      .ravenpet-dev-row span{width:30px;color:#9aa3b2}
+      .ravenpet-dev-row input{flex:1;accent-color:#2f7cf6}
+      .ravenpet-dev-row b{width:48px;text-align:right;font-weight:500}
+      .ravenpet-dev-actions{display:flex;gap:6px;margin-top:8px}
+      .ravenpet-dev-actions button{flex:1;padding:6px;border:1px solid rgba(255,255,255,.14);border-radius:6px;background:rgba(255,255,255,.06);color:inherit;font-size:11px;cursor:pointer}
+      .ravenpet-dev-status{margin-top:6px;min-height:14px;color:#7fd18f;font-size:11px;word-break:break-all}
+      .ravenpet-balance{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 9px 2px;color:#9aa3b2}
+      .ravenpet-balance b{font-weight:600}
     `
 
     function readStore() {
@@ -203,7 +203,7 @@ window.__ModuleLoader__.load({
       let token = 0
       let busy = false
 
-      const OVERRIDE_KEY = 'role2pet.dev.v1'
+      const OVERRIDE_KEY = 'ravenpet.dev.v1'
       const readOverrides = () => {
         try {
           return JSON.parse(localStorage.getItem(OVERRIDE_KEY) || '{}') || {}
@@ -261,7 +261,7 @@ window.__ModuleLoader__.load({
         const myToken = ++token
         const cur = layers[front]
         const nxt = layers[1 - front]
-        nxt.classList.remove('role2pet-on')
+        nxt.classList.remove('ravenpet-on')
         applyLayerStyle(nxt, item)
         if (opts.offsetFrom !== undefined) {
           nxt.style.transform = `translate(-50%, calc(-50% + ${opts.offsetFrom}px))`
@@ -286,8 +286,8 @@ window.__ModuleLoader__.load({
           nxt.currentTime = 0
           await nxt.play().catch(() => {})
           if (myToken !== token || destroyed) return
-          nxt.classList.add('role2pet-on')
-          cur.classList.remove('role2pet-on')
+          nxt.classList.add('ravenpet-on')
+          cur.classList.remove('ravenpet-on')
           front = 1 - front
           const previous = cur
           setTimeout(() => {
@@ -692,7 +692,7 @@ window.__ModuleLoader__.load({
         })
         engineRef.current = engine
         engine.init().catch((error) => {
-          console.error('[role2-pet] init failed', error)
+          console.error('[raven-winpet] init failed', error)
         })
         return () => {
           engine.destroy()
@@ -840,7 +840,7 @@ window.__ModuleLoader__.load({
           clientY < stageRect.top ||
           clientY > stageRect.bottom
         ) return false
-        const video = videoARef.current?.classList.contains('role2pet-on')
+        const video = videoARef.current?.classList.contains('ravenpet-on')
           ? videoARef.current
           : videoBRef.current
         if (!video || video.readyState < 2) return false
@@ -873,12 +873,12 @@ window.__ModuleLoader__.load({
 
       const onPointerDown = (event) => {
         if (event.button !== 0) return
-        if (event.target?.closest?.('.role2pet-menu,.role2pet-dev')) return
+        if (event.target?.closest?.('.ravenpet-menu,.ravenpet-dev')) return
         if (!isOpaqueAt(event.clientX, event.clientY)) return
         event.preventDefault()
         event.stopPropagation()
         document.body.style.cursor = 'grabbing'
-        document.documentElement.classList.add('role2pet-dragging')
+        document.documentElement.classList.add('ravenpet-dragging')
         setMenu(null)
         const stage = stageRef.current
         if (!stage) return
@@ -916,7 +916,7 @@ window.__ModuleLoader__.load({
         if (!drag || drag.pointerId !== event.pointerId) return
         dragRef.current = null
         document.body.style.cursor = ''
-        document.documentElement.classList.remove('role2pet-dragging')
+        document.documentElement.classList.remove('ravenpet-dragging')
         try {
           document.documentElement.releasePointerCapture?.(event.pointerId)
         } catch {}
@@ -942,7 +942,7 @@ window.__ModuleLoader__.load({
       }
 
       const onContextMenu = (event) => {
-        if (event.target?.closest?.('.role2pet-menu,.role2pet-dev')) return
+        if (event.target?.closest?.('.ravenpet-menu,.ravenpet-dev')) return
         if (!isOpaqueAt(event.clientX, event.clientY)) return
         event.preventDefault()
         event.stopPropagation()
@@ -966,7 +966,7 @@ window.__ModuleLoader__.load({
           document.removeEventListener('pointerup', onPointerUp, true)
           document.removeEventListener('pointercancel', onPointerUp, true)
           document.removeEventListener('contextmenu', onContextMenu, true)
-          document.documentElement.classList.remove('role2pet-dragging')
+          document.documentElement.classList.remove('ravenpet-dragging')
           document.body.style.cursor = ''
         }
       }, [])
@@ -990,7 +990,7 @@ window.__ModuleLoader__.load({
 
       const loadBalance = async () => {
         try {
-          const response = await fetch('/role2-pet/balance', { cache: 'no-store' })
+          const response = await fetch('/raven-winpet/balance', { cache: 'no-store' })
           const data = await response.json()
           setBalance(data?.ok ? data : { ok: false, reason: data?.reason || 'error' })
         } catch {
@@ -1111,12 +1111,12 @@ window.__ModuleLoader__.load({
         key: label,
         type: 'button',
         onClick: action,
-      }, h('span', null, label), right ? h('span', { className: 'role2pet-dim' }, right) : null)
+      }, h('span', null, label), right ? h('span', { className: 'ravenpet-dim' }, right) : null)
 
-      return h('div', { className: 'role2pet-root', ref: rootRef },
+      return h('div', { className: 'ravenpet-root', ref: rootRef },
         h('style', null, CSS),
         h('div', {
-          className: 'role2pet-stage',
+          className: 'ravenpet-stage',
           ref: stageRef,
           style: {
             left: `${ui.x}px`,
@@ -1126,12 +1126,12 @@ window.__ModuleLoader__.load({
           },
         },
           h('div', {
-            className: 'role2pet-canvas',
+            className: 'ravenpet-canvas',
             style: { transform: `scale(${ui.size / BASE})` },
           },
             h('video', {
               ref: videoARef,
-              className: 'role2pet-video',
+              className: 'ravenpet-video',
               muted: true,
               playsInline: true,
               preload: 'auto',
@@ -1139,7 +1139,7 @@ window.__ModuleLoader__.load({
             }),
             h('video', {
               ref: videoBRef,
-              className: 'role2pet-video',
+              className: 'ravenpet-video',
               muted: true,
               playsInline: true,
               preload: 'auto',
@@ -1147,84 +1147,84 @@ window.__ModuleLoader__.load({
             })
           ),
           h('div', {
-            className: `role2pet-bubble${bubbleText ? ' role2pet-on' : ''}`,
+            className: `ravenpet-bubble${bubbleText ? ' ravenpet-on' : ''}`,
           }, bubbleText || '')
         ),
         menu ? h('div', {
-          className: 'role2pet-menu',
+          className: 'ravenpet-menu',
           ref: menuRef,
           style: { left: `${menu.x}px`, top: `${menu.y}px` },
           onPointerDown: (event) => event.stopPropagation(),
         },
-          h('div', { className: 'role2pet-balance' },
+          h('div', { className: 'ravenpet-balance' },
             h('span', null, '剩余余额'),
             h('b', { style: { color: balanceColor } }, balanceText)
           ),
-          h('div', { className: 'role2pet-sep' }),
-          h('div', { className: 'role2pet-choice' },
+          h('div', { className: 'ravenpet-sep' }),
+          h('div', { className: 'ravenpet-choice' },
             h('span', null, '大小'),
-            h('div', { className: 'role2pet-seg' },
+            h('div', { className: 'ravenpet-seg' },
               SIZE_LABELS.map((label, index) => h('button', {
                 key: label,
                 type: 'button',
-                className: index === sizeIndex ? 'role2pet-on' : '',
+                className: index === sizeIndex ? 'ravenpet-on' : '',
                 onClick: () => setPetSize(SIZE_STEPS[index]),
               }, label))
             )
           ),
-          h('div', { className: 'role2pet-choice' },
+          h('div', { className: 'ravenpet-choice' },
             h('span', null, '姿态'),
-            h('div', { className: 'role2pet-seg' },
+            h('div', { className: 'ravenpet-seg' },
               h('button', {
                 type: 'button',
-                className: petPosture === 'sit' ? '' : 'role2pet-on',
+                className: petPosture === 'sit' ? '' : 'ravenpet-on',
                 onClick: () => { engineRef.current?.setPosture('stand'); resetRandomTimer() },
               }, '站'),
               h('button', {
                 type: 'button',
-                className: petPosture === 'sit' ? 'role2pet-on' : '',
+                className: petPosture === 'sit' ? 'ravenpet-on' : '',
                 onClick: () => { engineRef.current?.setPosture('sit'); resetRandomTimer() },
               }, '坐')
             )
           ),
-          h('div', { className: 'role2pet-sep' }),
+          h('div', { className: 'ravenpet-sep' }),
           menuItem('换一个动作', () => { engineRef.current?.randomNext(); resetRandomTimer(); setMenu(null) }, ''),
-          h('div', { className: 'role2pet-sep' }),
+          h('div', { className: 'ravenpet-sep' }),
           menuItem('重置位置', resetPosition, ''),
           h('div', {
-            className: 'role2pet-dim',
+            className: 'ravenpet-dim',
             style: { padding: '6px 9px 2px', display: 'flex', alignItems: 'center' },
-          }, h('span', { className: `role2pet-dot${connected ? '' : ' role2pet-off'}` }),
+          }, h('span', { className: `ravenpet-dot${connected ? '' : ' ravenpet-off'}` }),
             connected
               ? `AI 活动流 · ${working ? (mode === 'search' ? '查资料' : '工作中') : '待机'}`
               : 'AI 活动流未连接')
         ) : null,
         devOpen ? h('div', {
-          className: 'role2pet-dev',
+          className: 'ravenpet-dev',
           onPointerDown: (event) => event.stopPropagation(),
         },
-          h('div', { className: 'role2pet-dev-head' },
+          h('div', { className: 'ravenpet-dev-head' },
             h('span', null, `开发者模式 · ${devSelectedLabel}`),
             h('button', { type: 'button', onClick: closeDev, title: '关闭' }, '×')
           ),
           ready
-            ? h('div', { className: 'role2pet-dev-list' },
+            ? h('div', { className: 'ravenpet-dev-list' },
                 devGroups.map((group) => {
                   const items = devCatalog.filter((item) => devGroupOf(item) === group.key)
                   if (items.length === 0) return null
                   return h('div', { key: group.key },
-                    h('div', { className: 'role2pet-dev-group' }, group.label),
+                    h('div', { className: 'ravenpet-dev-group' }, group.label),
                     items.map((item) => h('button', {
                       key: item.id,
                       type: 'button',
-                      className: `role2pet-dev-act${devSelected === item.id ? ' role2pet-dev-on' : ''}`,
+                      className: `ravenpet-dev-act${devSelected === item.id ? ' ravenpet-dev-on' : ''}`,
                       onClick: () => selectDev(item.id),
                     }, item.label))
                   )
                 })
               )
-            : h('div', { className: 'role2pet-dev-group' }, '动作加载中…'),
-          h('label', { className: 'role2pet-dev-row' },
+            : h('div', { className: 'ravenpet-dev-group' }, '动作加载中…'),
+          h('label', { className: 'ravenpet-dev-row' },
             h('span', null, '缩放'),
             h('input', {
               type: 'range',
@@ -1236,7 +1236,7 @@ window.__ModuleLoader__.load({
             }),
             h('b', null, devScale.toFixed(3))
           ),
-          h('label', { className: 'role2pet-dev-row' },
+          h('label', { className: 'ravenpet-dev-row' },
             h('span', null, '偏移'),
             h('input', {
               type: 'range',
@@ -1248,12 +1248,12 @@ window.__ModuleLoader__.load({
             }),
             h('b', null, devOffset.toFixed(1))
           ),
-          h('div', { className: 'role2pet-dev-actions' },
+          h('div', { className: 'ravenpet-dev-actions' },
             h('button', { type: 'button', onClick: resetDev }, '复位'),
             h('button', { type: 'button', onClick: copyDev }, '复制覆盖值'),
             h('button', { type: 'button', onClick: closeDev }, '关闭')
           ),
-          devStatus ? h('div', { className: 'role2pet-dev-status' }, devStatus) : null
+          devStatus ? h('div', { className: 'ravenpet-dev-status' }, devStatus) : null
         ) : null
       )
     }
@@ -1281,7 +1281,7 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         ctx.slots.inject('shell.overlay', () => ctx.slots.register({
           name: 'shell.overlay',
-          id: 'role2-pet',
+          id: 'raven-winpet',
           order: 100,
           label: 'Raven 桌宠',
         }, PetOverlay))
@@ -1298,7 +1298,7 @@ window.__ModuleLoader__.load({
             // 只在“当前主视图会话”真的变化时上报，避免 1s 轮询打爆宿主。
             if (sessionId === lastReported) return
             lastReported = sessionId
-            fetch('/role2-pet/active-session', {
+            fetch('/raven-winpet/active-session', {
               method: 'POST',
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({ sessionId }),
@@ -1321,7 +1321,7 @@ window.__ModuleLoader__.load({
             unsubscribe?.()
             document.removeEventListener('visibilitychange', onVisible)
           }
-        }, 'role2-pet: active session report')
+        }, 'raven-winpet: active session report')
       },
     }
   },

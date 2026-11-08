@@ -1,6 +1,6 @@
 # Raven · 透明 WebM 桌宠
 
-一个运行在 Windows 桌面的透明 WebM 桌宠。角色以 768×768@60fps 带 Alpha 通道的 VP9 视频渲染，能拖拽、坐在任务栏/其他窗口边缘、受重力掉落、跟随宿主窗口移动，并带一个独立的工具箱窗口、系统托盘图标和 AI 聊天。角色工程代号仍为 `role2`。
+一个运行在 Windows 桌面的透明 WebM 桌宠。角色以 768×768@60fps 带 Alpha 通道的 VP9 视频渲染，能拖拽、坐在任务栏/其他窗口边缘、受重力掉落、跟随宿主窗口移动，并带一个独立的工具箱窗口、系统托盘图标和 AI 聊天。角色工程代号仍为 `Raven`。
 
 > 桌宠本体（程序）与美术动画是分开的两条线：本仓库负责程序逻辑与运行时；角色动作视频由美术侧产出后，放进 `src/assets/` 并登记到 `src/assets/manifest.json` 即可接入。
 
@@ -16,7 +16,7 @@
 
 ### 下载
 
-Windows x64 便携版（免安装、直接运行 `role2-pet.exe`）发布在 GitHub Releases：
+Windows x64 便携版（免安装、直接运行 `raven-winpet.exe`）发布在 GitHub Releases：
 
 <https://github.com/shixiaoyu-funny/DSHAndMulti_PlatFormDesktopPet/releases/latest>
 
@@ -54,7 +54,7 @@ Windows x64 便携版（免安装、直接运行 `role2-pet.exe`）发布在 Git
 ```bat
 cd src-tauri
 cargo build
-.\target\debug\role2-pet.exe
+.\target\debug\raven-winpet.exe
 ```
 
 （或直接双击 `启动桌宠.vbs` 无控制台启动；`启动桌宠.bat` 会显示编译控制台，只建议构建时用。）
@@ -101,6 +101,7 @@ cargo build
 - **四阶段好感度**：好感度从高冷防备到卸下防备，影响语气、工具可用性和动作；工具箱顶栏显示分数与阶段颜色。
 - **主动陪伴**：前台应用检测 + flash 判断 + 定时截图，主动冒泡；不写聊天记忆。
 - **语音输出**：TTS 与聊天文字同步启动，可在工具箱一键关闭。
+- **开机自启**：工具箱开关，使用官方 `tauri-plugin-autostart`，状态写入 `config.json` 并在启动时同步。
 - **DSH Web 插件**：同一套动作/配置可同步到 DeepSeek Harness 页面内悬浮层。
 
 ---
@@ -193,7 +194,7 @@ Desktop_Pet/
 
 ### 方式一：`启动桌宠.bat`
 
-脚本做了三件事：加载 MSVC 环境 → `cargo build`（增量编译）→ 启动 `target\debug\role2-pet.exe`。
+脚本做了三件事：加载 MSVC 环境 → `cargo build`（增量编译）→ 启动 `target\debug\raven-winpet.exe`。
 
 ```bat
 启动桌宠.bat
@@ -201,7 +202,7 @@ Desktop_Pet/
 
 脚本假定 MSVC 在 `D:\BuildTools`，路径不对就改脚本里的 `VCVARS` 变量。
 
-日常启动建议双击 `启动桌宠.vbs`：它直接以隐藏窗口方式启动 `role2-pet.exe`，不会弹黑色控制台；`角色启动时枚举应用/命令行工具` 的子进程也都使用 `CREATE_NO_WINDOW`，不会闪黑框。
+日常启动建议双击 `启动桌宠.vbs`：它直接以隐藏窗口方式启动 `raven-winpet.exe`，不会弹黑色控制台；`角色启动时枚举应用/命令行工具` 的子进程也都使用 `CREATE_NO_WINDOW`，不会闪黑框。
 
 ### 方式二：手动
 
@@ -214,14 +215,14 @@ cd src-tauri
 cargo build
 
 # 3. 运行
-.\target\debug\role2-pet.exe
+.\target\debug\raven-winpet.exe
 ```
 
 ### 发布版
 
 ```powershell
 cd src-tauri
-cargo build --release   # 产物 target\release\role2-pet.exe
+cargo build --release   # 产物 target\release\raven-winpet.exe
 ```
 
 `Cargo.toml` 已配 `opt-level = "s"`、`lto = true`、`codegen-units = 1`、`strip = true`，发布版体积小、无控制台窗口（`main.rs` 里 `windows_subsystem = "windows"`）。
@@ -269,14 +270,14 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 - **模型**：`qwen3.8-flash`，接口为百炼 OpenAI 兼容模式 `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`。
 - **角色**：Raven，黑长直、红瞳、黑红制服、金色发饰；傲娇、爱挑逗、嘴硬心软。
 - **流式输出**：SSE 增量返回，聊天窗口边收边显示。
-- **会话记忆**：最近 40 条消息保存在 `%APPDATA%\com.local.role2.pet\chat_history.json`，重启后保留；聊天窗口的「清空」会同时清空内存和文件。
+- **会话记忆**：最近 40 条消息保存在 `%APPDATA%\com.local.raven.winpet\chat_history.json`，重启后保留；聊天窗口的「清空」会同时清空内存和文件。
 - **聊天时保持姿态**：打开聊天窗口后暂停随机，并保持打开前的姿态；如果当前正在演表情/慌张，会回到该姿态的待机（站姿待机 / 正坐待机 / 侧坐单手撑），不会停在最后一帧。
 - **动作约束**：每次请求都会把当前姿态（站姿 / 正坐 / 侧坐）和该姿态允许的动作表加入模型上下文；动作表包含英文 id、中文名称、含义/使用时机，并要求模型只输出英文 id。模型返回 `{"reply":"...","action":"...","score":...}` 后，后端校验 JSON 能否解析、action 是否在当前列表中；失败会自动重新生成，最多重试 10 次。仍失败则回复兜底台词「本小姐现在不想理你，给我点时间静静......」，不会把坏格式发出去。
 - **动作触发**：模型返回的动作通过 `pet:ai-action` 发给桌宠窗口，播放一次后回到当前姿态待机；回复文本同时显示在聊天窗口和桌宠气泡里。
 
 ### 好感度系统
 
-好感度总分保存在 `%APPDATA%\com.local.role2.pet\affinity.json`。模型在 JSON 里返回 `score` 变化值，服务端按当前阶段限制范围后累加：
+好感度总分保存在 `%APPDATA%\com.local.raven.winpet\affinity.json`。模型在 JSON 里返回 `score` 变化值，服务端按当前阶段限制范围后累加：
 
 | 阶段 | 分数 | 扣分范围 | 加分范围 |
 |---|---:|---:|---:|
@@ -299,7 +300,7 @@ cargo build --release   # 产物 target\release\role2-pet.exe
 - 使用官方 HTTP + SSE 流式合成，服务端在内存中合并 MP3 音频块，再以 base64 交给桌宠前端播放；
 - 不写本地音频文件，也不上传 OSS；音频只在内存和 WebView Blob 中存在；
 - 新语音会停止上一条语音；
-- 开关状态保存在 `%APPDATA%\com.local.role2.pet\tts.json`。
+- 开关状态保存在 `%APPDATA%\com.local.raven.winpet\tts.json`。
 
 默认使用 `https://dashscope.aliyuncs.com/api/v1/services/audio/tts/SpeechSynthesizer`。如果账号要求业务空间专属域名，可以设置：
 
@@ -355,7 +356,7 @@ setx RAVEN_AMBIENT_SCREENSHOTS 0  # 只关闭自动截图
 桌宠的偏好设置存放在系统应用配置目录（Tauri `app_config_dir`），本机为：
 
 ```
-%APPDATA%\com.local.role2.pet\config.json
+%APPDATA%\com.local.raven.winpet\config.json
 ```
 
 字段（自动落盘，一般无需手改）：
@@ -469,7 +470,7 @@ setx RAVEN_AMBIENT_SCREENSHOTS 0  # 只关闭自动截图
 | `sit_panic` | 正坐慌张挥手 | 坐姿（正坐） | 0.875 | 12.5 |
 ### 上下偏移 `offset`
 
-坐姿动作（含慌张）的视频素材接地线与站姿存在微小落差，用 CSS 垂直偏移校正（`translate(-50%, calc(-50% + offset px))`）。定稿值写死在 `manifest.json` 的 `offset` 字段：正坐 13.5 / 侧坐 13.9 / 慌张 12.5；开发者面板可继续微调，覆盖值存 localStorage（键 `role2pet.actionOffsets.v1`）。
+坐姿动作（含慌张）的视频素材接地线与站姿存在微小落差，用 CSS 垂直偏移校正（`translate(-50%, calc(-50% + offset px))`）。定稿值写死在 `manifest.json` 的 `offset` 字段：正坐 13.5 / 侧坐 13.9 / 慌张 12.5；开发者面板可继续微调，覆盖值存 localStorage（键 `ravenpet.actionOffsets.v1`）。
 
 > 说明：早期版本的「坐姿下沉 sink」机制（按坐姿类型 × 档位额外下压、配合 Rust `set_contact` 的 `sink` 参数）已彻底移除，统一改为上述 CSS `offset` 方案。
 
@@ -632,8 +633,8 @@ setx RAVEN_AMBIENT_SCREENSHOTS 0  # 只关闭自动截图
 
 | 键 | 内容 |
 |---|---|
-| `role2pet.devScales.v3` | 每个动作的缩放覆盖值（id → 比例） |
-| `role2pet.actionOffsets.v1` | 每个动作的上下偏移覆盖值（id → CSS px） |
+| `ravenpet.devScales.v3` | 每个动作的缩放覆盖值（id → 比例） |
+| `ravenpet.actionOffsets.v1` | 每个动作的上下偏移覆盖值（id → CSS px） |
 
 > 键名带版本号（`.v3` / `.v1`）：定稿值回填 manifest 后会**换新键**作废旧覆盖值，避免旧的调试中间值盖掉定稿值。这是刻意的「换键作废」机制。
 
@@ -686,7 +687,7 @@ cargo run --bin winscan
 
 仓库已用 git 管理（`main` 分支），`src-tauri/target/` 与构建中间产物已 ignore。改坏了直接 `git diff` / `git checkout --` 回滚。
 
-桌面版与 DSH 网页版共用同一套动作素材，但**部署出去的是两份**：仓库里的 `dsh-plugin/` 只有代码，素材唯一真源是 `src/assets/`，运行时副本在 `default-workspace\role2-pet-plugin`（DSH profile 用 `link:` 指向它）。
+桌面版与 DSH 网页版共用同一套动作素材，但**部署出去的是两份**：仓库里的 `dsh-plugin/` 只有代码，素材唯一真源是 `src/assets/`，运行时副本在 `default-workspace\raven-winpet-plugin`（DSH profile 用 `link:` 指向它）。
 
 改完插件或素材后，必须跑一次同步，否则网页版还是旧内容：
 
@@ -717,3 +718,12 @@ cargo run --bin winscan
 ## 许可
 
 内部项目，暂不对外发布。
+
+## ⚠️ 免责声明 (Disclaimer)
+
+1. **学习与交流目的**：本项目（包括代码及相关美术素材）由 **shixiaoyu-funny** 原创开发，仅供个人学习、技术交流与开源社区研究使用，**严禁用于任何形式的商业售卖、倒卖或盈利性二次分发**。
+2. **版权归属**：项目内使用的部分 AI 生成素材及相关知识产权归原作者所有。任何个人或组织在未经明确书面授权的情况下，不得将本项目（或其修改版）打包上架至淘宝、闲鱼、拼多多等商业平台进行售卖。
+3. **免责条款**：使用者在使用本项目时，需自行承担因操作不当、代码修改或第三方 API 调用（如大模型生成内容）产生的所有后果。作者不对任何因使用本项目而导致的直接或间接损失、法律纠纷承担任何责任。
+4. **侵权处理**：如发现任何人违反本声明进行商业倒卖，作者保留追究其法律责任及向平台举报的权利。如有版权疑问或授权需求，请通过 B站（https://space.bilibili.com/517323821）联系作者。
+
+*本项目最终解释权归 shixiaoyu-funny 所有。*

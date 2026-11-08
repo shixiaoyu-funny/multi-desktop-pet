@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "role2-pet",
+  "productName": "Raven",
   "version": "0.2.0",
-  "identifier": "com.local.role2.pet",
+  "identifier": "com.local.raven.winpet",
   "build": {
     "frontendDist": "../src"
   },
@@ -32,7 +32,9 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

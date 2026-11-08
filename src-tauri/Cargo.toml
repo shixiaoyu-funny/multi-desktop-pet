@@ -1,12 +1,12 @@
 [package]
-name = "role2-pet"
+name = "raven-winpet"
 version = "0.2.0"
-description = "role2 透明 WebM 桌宠"
+description = "Raven 透明 WebM 桌宠"
 edition = "2021"
 rust-version = "1.77"
 
 [lib]
-name = "role2_pet_lib"
+name = "raven_winpet_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -14,6 +14,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", features = ["blocking", "json"] }

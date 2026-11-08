@@ -19,7 +19,7 @@ call "%VCVARS%" >nul
 set "PATH=%USERPROFILE%\.cargo\bin;%PATH%"
 
 rem 先关掉已在运行的实例，避免出现两只
-taskkill /IM role2-pet.exe /F >nul 2>&1
+taskkill /IM raven-winpet.exe /F >nul 2>&1
 
 cd /d "%ROOT%src-tauri"
 
@@ -35,7 +35,7 @@ if errorlevel 1 (
 
 echo [2/2] 启动桌宠...
 cd /d "%ROOT%"
-start "" "%ROOT%src-tauri\target\debug\role2-pet.exe"
+start "" "%ROOT%src-tauri\target\debug\raven-winpet.exe"
 
 endlocal
 exit /b 0

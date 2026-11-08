@@ -20,3 +20,7 @@ Thumbs.db
 desktop.ini
 .idea/
 .vscode/
+
+dist/
+# Windows portable package
+

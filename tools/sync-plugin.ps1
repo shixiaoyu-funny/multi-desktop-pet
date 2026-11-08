@@ -6,7 +6,7 @@
       · 动作素材：<仓库>\src\assets\   （视频 + manifest.json）
 
     同步目标
-      · 默认 C:\Users\Lenovo\Documents\deepseek-harness\default-workspace\role2-pet-plugin
+      · 默认 C:\Users\Lenovo\Documents\deepseek-harness\default-workspace\raven-winpet-plugin
         —— 也就是 DSH profile 里 `link:` 指向的那份
 
     只做三件事：内容不同的文件覆盖、目标多出来的素材删除、最后打印一份清单。
@@ -16,7 +16,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string]$Target = 'C:\Users\Lenovo\Documents\deepseek-harness\default-workspace\role2-pet-plugin',
+    [string]$Target = 'C:\Users\Lenovo\Documents\deepseek-harness\default-workspace\raven-winpet-plugin',
     [switch]$CheckOnly
 )
 
@@ -37,8 +37,8 @@ if (-not (Test-Path $Target)) {
     throw "目标目录不存在：$Target`n（先把插件装好，或手动改成实际路径）"
 }
 $targetPkg = Join-Path $Target 'package.json'
-if (-not (Test-Path $targetPkg) -or -not ((Get-Content $targetPkg -Raw) -match 'role2-pet|raven-pet')) {
-    throw "目标目录不像 role2 插件目录（package.json 里没有 role2-pet）：$Target"
+if (-not (Test-Path $targetPkg) -or -not ((Get-Content $targetPkg -Raw) -match 'raven-winpet|raven-pet')) {
+    throw "目标目录不像 Raven 插件目录（package.json 里没有 raven-winpet）：$Target"
 }
 
 function Get-RelPath([string]$Base, [string]$Full) {

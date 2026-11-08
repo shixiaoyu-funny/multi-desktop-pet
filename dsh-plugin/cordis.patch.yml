@@ -2,5 +2,5 @@
 # The host half serves the WebM action assets and projects session activity;
 # the client half renders the floating pet inside the DSH web page.
 - insert:
-    - id: role2-pet
+    - id: raven-winpet
       name: 'dsh-plugin-raven-pet'

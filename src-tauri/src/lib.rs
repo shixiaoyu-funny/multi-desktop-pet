@@ -1,4 +1,4 @@
-//! role2 透明 WebM 桌宠 —— Tauri 2 主逻辑
+//! Raven 透明 WebM 桌宠 —— Tauri 2 主逻辑
 //!
 //! 与 Electron 版的差别只在"谁来驱动窗口"：
 //!  · 透明窗口固定 1024×1024，永不 resize；大小档位靠窗口内 CSS 缩放视频实现
@@ -79,6 +79,9 @@ pub struct Cfg {
     pub random: bool,
     pub interval: u32,
     pub action: String,
+    /// 开机自启（用户可在工具箱切换）
+    #[serde(default)]
+    pub autostart: bool,
     /// 坐在窗口边缘 / 任务栏上
     #[serde(default)]
     pub snap: bool,
@@ -136,6 +139,7 @@ impl Default for Cfg {
             random: true,
             interval: 180,
             action: "stand_idle".into(),
+            autostart: false,
             snap: false,
             gravity: false,
             snap_offset_upright_small: 20.0,
@@ -510,6 +514,25 @@ fn save_cfg(patch: serde_json::Value, state: tauri::State<'_, Shared>) -> serde_
 }
 
 /// 前端算好的 alpha 掩膜（0/1，长度 = w*h）
+#[tauri::command]
+fn set_autostart(
+    app: AppHandle,
+    enabled: bool,
+    state: tauri::State<'_, Shared>,
+) -> Result<(), String> {
+    use tauri_plugin_autostart::ManagerExt;
+    let manager = app.autolaunch();
+    if enabled {
+        manager.enable().map_err(|error| format!("开启开机自启失败：{error}"))?;
+    } else {
+        manager.disable().map_err(|error| format!("关闭开机自启失败：{error}"))?;
+    }
+    let mut pet = state.lock().map_err(|_| "配置锁不可用".to_string())?;
+    pet.cfg.autostart = enabled;
+    pet.save();
+    Ok(())
+}
+
 #[tauri::command]
 fn set_mask(w: usize, h: usize, data: Vec<u8>, state: tauri::State<'_, Shared>) {
     let mut pet = state.lock().unwrap();
@@ -1403,6 +1426,10 @@ fn spawn_poller(app: AppHandle, shared: Shared, self_hwnd: isize) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .setup(|app| {
             let handle = app.handle().clone();
 
@@ -1431,6 +1458,22 @@ pub fn run() {
             // 轮换间隔只允许 3 / 10 / 15 分钟；老配置的 120 秒归一为 3 分钟。
             if ![180, 600, 900].contains(&cfg.interval) {
                 cfg.interval = 180;
+            }
+
+            {
+                use tauri_plugin_autostart::ManagerExt;
+                let autolaunch = app.handle().autolaunch();
+                let current = autolaunch.is_enabled().unwrap_or(false);
+                if cfg.autostart != current {
+                    let result = if cfg.autostart {
+                        autolaunch.enable()
+                    } else {
+                        autolaunch.disable()
+                    };
+                    if let Err(error) = result {
+                        eprintln!("[autostart] sync failed: {error}");
+                    }
+                }
             }
 
             app.manage(chat::ChatState::new(dir.clone()));
@@ -1565,6 +1608,7 @@ pub fn run() {
             bootstrap,
             save_cfg,
             set_mask,
+            set_autostart,
             set_contact,
             set_menu_open,
             get_debug,
@@ -1593,3 +1637,5 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("Tauri 启动失败");
 }
+
+// shixiaoyu-funny原创，详见bilibili：https://space.bilibili.com/517323821?spm_id_from=333.337.0.0，仅供学习，严禁商用

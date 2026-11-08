@@ -2,5 +2,5 @@
 #![windows_subsystem = "windows"]
 
 fn main() {
-    role2_pet_lib::run()
+    raven_winpet_lib::run()
 }

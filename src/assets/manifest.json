@@ -1,6 +1,6 @@
 {
   "schema": 4,
-  "character": "role2",
+  "character": "Raven",
   "note": "动作配置。playable=false 的动作不会出现在工具箱动作池里，也不能手动播放，只在状态机内部自动使用（过渡动画、任务栏落地慌张挥手）。transition 字段 {from,to} 用 stand / sit_upright / sit_side 描述姿态方向。loop=false 表示只播一次，播完由前端切到目标动作。scale 为定稿出厂值。",
   "canvas": 768,
   "defaultPool": "idle",

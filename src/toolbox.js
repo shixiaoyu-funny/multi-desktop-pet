@@ -1,5 +1,5 @@
 /**
- * role2 桌宠 —— 工具箱窗口前端
+ * Raven 桌宠 —— 工具箱窗口前端
  *
  * 这个窗口只做 UI，不持有任何权威状态：
  *  · 全部状态从桌宠窗口通过 `pet:state` 事件同步过来
@@ -191,6 +191,17 @@ function bindEvents() {
 /** 开关型指令：把当前值取反发给桌宠 */
 function toggle(kind) {
   const c = state && state.cfg
+  if (kind === 'autostart') {
+    if (!c) return
+    const next = !c.autostart
+    invoke('set_autostart', { enabled: next })
+      .then(() => {
+        c.autostart = next
+        render()
+      })
+      .catch((error) => console.warn('[toolbox] autostart toggle failed', error))
+    return
+  }
   if (kind === 'tts') {
     const next = !ttsEnabled
     invoke('tts_set_enabled', { enabled: next })
@@ -243,6 +254,7 @@ function render() {
   // 开关
   setSw($('#rowRandom .sw'), c.random)
   setSw($('#rowTts .sw'), ttsEnabled)
+  setSw($('#rowAutostart .sw'), c.autostart)
   setSw($('#rowTop .sw'), c.alwaysOnTop)
   setSw($('#rowSnap .sw'), c.snap)
   setSw($('#rowGravity .sw'), c.gravity)
@@ -486,3 +498,4 @@ function copyText(text) {
   area.remove()
   return Promise.resolve()
 }
+// shixiaoyu-funny原创，详见bilibili：https://space.bilibili.com/517323821?spm_id_from=333.337.0.0，仅供学习，严禁商用

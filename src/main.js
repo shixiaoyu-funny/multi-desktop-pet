@@ -1,5 +1,5 @@
 /**
- * role2 透明 WebM 桌宠 —— 桌宠窗口前端（Tauri 2）
+ * Raven 透明 WebM 桌宠 —— 桌宠窗口前端（Tauri 2）
  *
  * 分工：
  *  · 本文件负责：选动作 / 双层视频交叉淡入 / 一次性过渡动画 / 算 alpha 掩膜 / 接收工具箱指令
@@ -927,7 +927,7 @@ function applyLayerScale(i) {
 
 // v3：13 个动作的缩放已实测定稿写进 manifest（定稿值），v2 里存的是调参过程
 // 留下的中间值，继续沿用会盖掉定稿值，所以换键作废。
-const SCALE_STORE = 'role2pet.devScales.v3'
+const SCALE_STORE = 'ravenpet.devScales.v3'
 
 function readDevScales() {
   try {
@@ -979,8 +979,8 @@ function resetActionScale(id) {
 
 // 坐姿动画的偏移出厂值来自 manifest（定稿）；慌张挥手可在开发者模式调，
 // 覆盖值存 localStorage（键为动作 id → CSS px）。范围 -20~20。
-const OFFSET_STORE = 'role2pet.actionOffsets.v1'
-const BUBBLE_STORE = 'role2pet.bubbleOffset.v1'
+const OFFSET_STORE = 'ravenpet.actionOffsets.v1'
+const BUBBLE_STORE = 'ravenpet.bubbleOffset.v1'
 
 function readActionOffsets() {
   try {
@@ -1302,3 +1302,5 @@ function showHint() {
   h.classList.add('show')
   setTimeout(() => h.classList.remove('show'), HINT_MS)
 }
+
+// shixiaoyu-funny原创，详见bilibili：https://space.bilibili.com/517323821?spm_id_from=333.337.0.0，仅供学习，严禁商用
