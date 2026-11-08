@@ -14,11 +14,20 @@
 - **语音输出**：`qwen-audio-3.0-tts-plus` + `qwen-audio-3.0-tts-plus-longmohuiling` 音色，语音开始后再吐字。
 - **一套素材，两种形态**：Windows/Tauri 桌面版 + DSH Web 插件共用同一套动作与 manifest。
 
+### 下载
+
+Windows x64 便携版（免安装、直接运行 `role2-pet.exe`）发布在 GitHub Releases：
+
+<https://github.com/shixiaoyu-funny/DSHAndMulti_PlatFormDesktopPet/releases/latest>
+
+> 需要 Windows 10/11 与 WebView2 Runtime；未签名 exe 首次运行可能被 SmartScreen 提示。
+
 ---
 
 ## 目录
 
 - [项目亮点](#项目亮点)
+- [下载](#下载)
 - [快速上手](#快速上手)
 - [功能特性](#功能特性)
 - [技术栈](#技术栈)
