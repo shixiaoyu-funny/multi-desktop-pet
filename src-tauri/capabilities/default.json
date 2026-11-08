@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Raven 桌宠、工具箱、AI 聊天与配置页的基础权限。",
-  "windows": ["pet", "toolbox", "chat", "setup"],
+  "windows": ["pet", "toolbox", "chat", "setup", "single-warning"],
   "permissions": [
     "core:event:default",
     "core:window:default",

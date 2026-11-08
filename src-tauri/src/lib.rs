@@ -794,20 +794,92 @@ const TOOLBOX_LABEL: &str = "toolbox";
 const TOOLBOX_W: f64 = 600.0;
 const TOOLBOX_H: f64 = 400.0;
 
-/// 打开（或唤到前面）工具箱窗口。
-/// 窗口关掉就是销毁，所以这里"有就显示、没有才创建"——不常驻，省一份 WebView2 内存。
-/// 第二个实例启动时，只在第一个实例里弹出提示；第二个实例由插件直接退出。
 #[cfg(windows)]
-fn show_single_instance_warning(_app: &AppHandle) {
-    use windows_sys::Win32::UI::WindowsAndMessaging::{
-        MessageBoxW, MB_ICONWARNING, MB_OK, MB_SETFOREGROUND, MB_TOPMOST,
+fn wide_str(text: &str) -> Vec<u16> {
+    text.encode_utf16().chain(std::iter::once(0)).collect()
+}
+
+#[cfg(windows)]
+fn install_single_instance_warning_listener(app: AppHandle) {
+    use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
+    use windows_sys::Win32::System::Threading::{
+        CreateEventW, WaitForSingleObject, INFINITE,
     };
 
-    let message: Vec<u16> = "本小姐一个人还不够陪你，你还有再开几个？？！\0"
-        .encode_utf16()
-        .collect();
-    let title: Vec<u16> = "Raven\0".encode_utf16().collect();
+    let name = wide_str("Local\\RavenWinpetWarningEvent");
+    let event = unsafe { CreateEventW(std::ptr::null_mut(), 0, 0, name.as_ptr()) };
+    if event.is_null() {
+        return;
+    }
+    let event = event as usize;
+    std::thread::spawn(move || {
+        let event = event as HANDLE;
+        loop {
+            let result = unsafe { WaitForSingleObject(event, INFINITE) };
+            if result == WAIT_OBJECT_0 {
+                let runner = app.clone();
+                let target = app.clone();
+                let queued = runner.run_on_main_thread(move || {
+                    show_single_instance_warning_window(&target);
+                });
+            }
+        }
+    });
+}
+
+/// 在第一个实例的主线程上创建/唤出渐变提示窗。
+#[cfg(windows)]
+fn show_single_instance_warning_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("single-warning") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.set_focus();
+        return;
+    }
+
+    let built = tauri::WebviewWindowBuilder::new(
+        app,
+        "single-warning",
+        tauri::WebviewUrl::App("single.html".into()),
+    )
+    .title("Raven")
+    .inner_size(440.0, 250.0)
+    .resizable(false)
+    .maximizable(false)
+    .minimizable(false)
+    .decorations(false)
+    .always_on_top(true)
+    .center()
+    .focused(true)
+    .build();
+
+    let _ = built;
+}
+
+#[cfg(windows)]
+fn show_single_instance_warning(_app: &AppHandle) {
+    use windows_sys::Win32::Foundation::CloseHandle;
+    use windows_sys::Win32::System::Threading::{OpenEventW, SetEvent, EVENT_MODIFY_STATE};
+
+    let name = wide_str("Local\\RavenWinpetWarningEvent");
+    let event = unsafe { OpenEventW(EVENT_MODIFY_STATE, 0, name.as_ptr()) };
+    if !event.is_null() {
+        unsafe {
+            SetEvent(event);
+            CloseHandle(event);
+        }
+        return;
+    }
+
+    // 极端情况下第一个实例还没装好监听器，退回系统提示，保证不静默。
     unsafe {
+        use windows_sys::Win32::UI::WindowsAndMessaging::{
+            MessageBoxW, MB_ICONWARNING, MB_OK, MB_SETFOREGROUND, MB_TOPMOST,
+        };
+        let message: Vec<u16> = "本小姐一个人还不够陪你，你还有再开几个？？！\0"
+            .encode_utf16()
+            .collect();
+        let title: Vec<u16> = "Raven\0".encode_utf16().collect();
         MessageBoxW(
             std::ptr::null_mut(),
             message.as_ptr(),
@@ -819,6 +891,13 @@ fn show_single_instance_warning(_app: &AppHandle) {
 
 #[cfg(not(windows))]
 fn show_single_instance_warning(_app: &AppHandle) {}
+
+#[tauri::command]
+fn close_single_warning(app: AppHandle) {
+    if let Some(window) = app.get_webview_window("single-warning") {
+        let _ = window.close();
+    }
+}
 
 fn show_toolbox(app: &AppHandle) {
     if let Some(w) = app.get_webview_window(TOOLBOX_LABEL) {
@@ -1458,6 +1537,9 @@ pub fn run() {
             None,
         ))
         .setup(|app| {
+            #[cfg(windows)]
+            install_single_instance_warning_listener(app.handle().clone());
+
             let handle = app.handle().clone();
 
             // 配置目录
@@ -1646,6 +1728,7 @@ pub fn run() {
             set_sit_kind,
             quit_app,
             open_toolbox,
+            close_single_warning,
             chat::chat_status,
             chat::drink_status,
             chat::drink_milk_tea,

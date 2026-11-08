@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Raven</title>
+  <link rel="stylesheet" href="single.css" />
+</head>
+<body>
+  <main class="single-card">
+    <div class="single-mark"><span></span>RAVEN · SINGLE INSTANCE</div>
+    <p class="single-message">本小姐一个人还不够陪你，<br />你还有再开几个？？！</p>
+    <button class="single-close" id="singleClose" type="button">知道了</button>
+  </main>
+
+  <script>
+    document.getElementById('singleClose').addEventListener('click', () => {
+      try {
+        window.__TAURI__.core.invoke('close_single_warning')
+      } catch {
+        window.close()
+      }
+    })
+  </script>
+</body>
+</html>
