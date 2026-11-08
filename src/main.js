@@ -1378,6 +1378,11 @@ function playAiAction(action) {
     if (settle) switchTo(settle, { keepTimer: true })
     return
   }
+  // 待机动作保持循环，避免说话期间只播一遍就停住
+  if (IDLE_ACTIONS.has(item.id)) {
+    switchTo(item, { keepTimer: true })
+    return
+  }
   playOneShot(action, settleIdFor())
 }
 
