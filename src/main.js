@@ -223,8 +223,8 @@ async function boot() {
 
   applySize(cfg.size || 'medium')
   const first =
-    playablePool.find((i) => i.id === cfg.action) ||
-    playablePool.find((i) => i.id === man.defaultAction) ||
+    playablePool.find((i) => i.id === cfg.action && IDLE_ACTIONS.has(i.id)) ||
+    playablePool.find((i) => i.id === man.defaultAction && IDLE_ACTIONS.has(i.id)) ||
     playablePool[0]
   granular = granularOf(first)
   posture = postureOf(first)
@@ -530,7 +530,9 @@ function findTransition(from, to) {
 
 /** 同姿态的候选动作；尽量不挑当前正在播的那个 */
 function pickForPosture(want) {
-  const same = playablePool.filter((i) => postureOf(i) === want)
+  const same = playablePool.filter(
+    (i) => postureOf(i) === want && IDLE_ACTIONS.has(i.id)
+  )
   if (!same.length) return null
   const others = same.filter((i) => !current || i.id !== current.id)
   const list = others.length ? others : same
@@ -851,8 +853,8 @@ async function play(id, opts = {}) {
       if (current === item) refreshMask()
     }, 900)
 
-    // 只有可手动播放的待机动作才落盘为"恢复动作"；过渡/慌张是瞬态，不落盘
-    if (!opts.silent && item.playable) {
+    // 只有真正的待机动作才落盘为"恢复动作"；一次性动作不能成为启动落点
+    if (!opts.silent && item.playable && IDLE_ACTIONS.has(item.id)) {
       cfg.action = id
       invoke('save_cfg', { patch: { action: id } })
     }
