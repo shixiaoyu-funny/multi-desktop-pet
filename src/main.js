@@ -64,7 +64,7 @@ let interactive = false
 let aiBusy = false
 let press = null
 let bubbleTimer = null
-let bubbleOffset = 0
+let bubbleOffset = 150
 let chatOpen = false
 let ttsAudio = null
 let ttsUrl = null
@@ -606,12 +606,18 @@ function switchTo(targetItem, opts = {}) {
 function playManual(id, attempt = 0) {
   const item = pool.find((i) => i.id === id)
   if (!item) return
+  if (item.trigger === 'milk_tea') return
   if (!item.playable) {
     previewAction(id)
     return
   }
   if (switching) {
     if (attempt < 30) setTimeout(() => playManual(id, attempt + 1), 80)
+    return
+  }
+  if (item.loop === false) {
+    // 一次性动作播完回当前姿态待机，避免直接 switchTo 后静止
+    playOneShot(id, idleIdFor(granularOf(item)))
     return
   }
   switchTo(item)
@@ -1203,9 +1209,8 @@ function settleIdFor() {
 }
 
 function readBubbleOffset() {
-  const value = Number(localStorage.getItem(BUBBLE_STORE))
-  if (!Number.isFinite(value)) return 0
-  return Math.round(Math.min(400, Math.max(-400, value)))
+  // 与 Suki 对齐：固定 150px，气泡不再受旧 localStorage 值影响而漂高
+  return 150
 }
 
 /** 气泡整体上下偏移：正数向下，范围 ±400px */
