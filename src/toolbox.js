@@ -21,6 +21,9 @@ let devOpen = false
 let askTimer = null
 let affinity = 0
 let ttsEnabled = true
+let milkTeaCount = 0
+let milkTeaLimit = 2
+let milkTeaBusy = false
 
 const $ = (sel) => document.querySelector(sel)
 
@@ -95,10 +98,62 @@ function boot() {
   renderAffinity()
   refreshAffinity()
   refreshTts()
+  refreshMilkTea()
   setInterval(refreshAffinity, 5000)
 
   bindEvents()
   $('#btnChat').addEventListener('click', openChat)
+  $('#btnMilkTea').addEventListener('click', drinkMilkTea)
+}
+
+function renderMilkTea() {
+  const label = $('#milkTeaCount')
+  const button = $('#btnMilkTea')
+  if (label) label.textContent = `今日 ${milkTeaCount}/${milkTeaLimit}`
+  if (button) {
+    button.disabled = milkTeaBusy || milkTeaCount >= milkTeaLimit
+    button.textContent = milkTeaBusy
+      ? '她正在喝…'
+      : milkTeaCount >= milkTeaLimit
+        ? '明天再来'
+        : '请她喝'
+  }
+}
+
+async function refreshMilkTea() {
+  try {
+    const status = await invoke('drink_status')
+    if (typeof status.count === 'number') milkTeaCount = status.count
+    if (typeof status.limit === 'number') milkTeaLimit = status.limit
+    renderMilkTea()
+  } catch {
+    renderMilkTea()
+  }
+}
+
+async function drinkMilkTea() {
+  if (milkTeaBusy || milkTeaCount >= milkTeaLimit) return
+  milkTeaBusy = true
+  renderMilkTea()
+  const note = $('#milkTeaNote')
+  if (note) note.textContent = '正在倒奶茶…'
+  try {
+    const result = await invoke('drink_milk_tea')
+    if (typeof result.count === 'number') milkTeaCount = result.count
+    if (typeof result.limit === 'number') milkTeaLimit = result.limit
+    if (note && typeof result.delta === 'number') {
+      note.textContent = `她收下了，好感 +${result.delta}`
+    }
+    renderMilkTea()
+  } catch (error) {
+    if (note) note.textContent = String(error).includes('两次')
+      ? '今天已经喝过两次了，明天再来吧'
+      : '奶茶没送出去，稍后再试'
+    refreshMilkTea()
+  } finally {
+    milkTeaBusy = false
+    renderMilkTea()
+  }
 }
 
 async function openChat() {
@@ -353,7 +408,7 @@ function renderDev(force = false) {
   if (force || list.dataset.sig !== sig) {
     list.dataset.sig = sig
     list.innerHTML = DEV_GROUPS.map((group) => {
-      const items = state.pool.filter((i) => devGroupOf(i) === group.key)
+      const items = state.pool.filter((i) => !i.hidden && devGroupOf(i) === group.key)
       if (!items.length) return ''
       return `<div class="dev-group">
         <div class="dev-group-title">${group.label}<span>${items.length}</span></div>

@@ -79,36 +79,79 @@ const IDLE_ACTIONS = new Set([
   'sit_lean',
 ])
 
-const INTERACTION_LINES = {
+const TOUCH_LINES_STORE = 'ravenpet.touchLines.v2'
+const TOUCH_AI_PENDING = new Set()
+const DEFAULT_TOUCH_LINES = {
   head: [
-    '唔…好舒服',
-    '再摸一下嘛',
-    '嘿嘿，头要化了',
-    '轻、轻一点…',
-    '好暖和',
-    '嗯…喜欢',
-    '呼噜呼噜…',
-    '今天也很努力了',
+    '别、别摸头……发饰会乱的。',
+    '就一下，谁准你一直摸了？',
+    '哼，手法倒是挺轻的。',
+    '再摸下去，我可要收费了。',
+    '……只准摸这里，别得寸进尺。',
+    '你是把我当猫了吗？',
+    '头发都被你弄乱了，负责。',
+    '这次就算了，下次要先问。',
   ],
   belly: [
-    '哈哈，别挠！',
-    '痒、痒啦！',
-    '噗…忍不住了',
-    '肚、肚子不行…',
-    '嘻嘻，好痒',
-    '再挠就笑给你看',
-    '哈哈哈，停一下',
-    '笑得肚子疼…',
+    '喂！别碰肚子，痒……',
+    '哈哈、停手，谁让你挠的？',
+    '再笑下去，我可要生气了。',
+    '你、你故意的吧？',
+    '别闹，衣服会皱的。',
+    '我笑得肚子都疼了……都怪你。',
+    '再碰一下，我就咬你。',
+    '这种事……不许告诉别人。',
   ],
   leg: [
-    '呀！别碰那里…',
-    '讨厌，腿很敏感啦',
-    '你、你干嘛…',
-    '不、不许摸腿！',
-    '好害羞…',
-    '再摸我要生气了',
-    '哼…色狼',
+    '手往哪放呢？拿开。',
+    '你、你碰到腿了……',
+    '再摸一下试试？',
+    '别得寸进尺，我警告你。',
+    '哼，色狼。',
+    '腿不是给你随便碰的。',
+    '我数到三，手拿开。',
+    '……下次再这样，真不理你了。',
   ],
+}
+
+let touchLines = loadTouchLines()
+
+function normalizeTouchLine(value) {
+  const line = String(value ?? '')
+    .trim()
+    .replace(/^["“”'`]+|["“”'`]+$/g, '')
+    .replace(/\s+/g, ' ')
+  const length = Array.from(line).length
+  return length >= 4 && length <= 80 ? line : ''
+}
+
+function loadTouchLines() {
+  const result = {}
+  let saved = null
+  try { saved = JSON.parse(localStorage.getItem(TOUCH_LINES_STORE) || 'null') } catch {}
+  for (const zone of Object.keys(DEFAULT_TOUCH_LINES)) {
+    const stored = saved && Array.isArray(saved[zone]) ? saved[zone] : []
+    const lines = stored.map(normalizeTouchLine).filter(Boolean).slice(0, 8)
+    const defaults = DEFAULT_TOUCH_LINES[zone]
+    for (let i = lines.length; i < 8; i++) lines.push(defaults[i % defaults.length])
+    result[zone] = lines
+  }
+  return result
+}
+
+function saveTouchLines() {
+  try { localStorage.setItem(TOUCH_LINES_STORE, JSON.stringify(touchLines)) } catch {}
+}
+
+function replaceTouchLine(zone, value) {
+  const line = normalizeTouchLine(value)
+  const lines = touchLines[zone]
+  if (!line || !Array.isArray(lines)) return false
+  if (lines.includes(line)) return false
+  const index = (Math.random() * lines.length) | 0
+  lines[index] = line
+  saveTouchLines()
+  return true
 }
 
 // 每个动作的相对缩放（1 = 铺满容器）。manifest 里的 scale 是出厂值，
@@ -202,6 +245,16 @@ async function boot() {
   safeListen('pet:ai-reply', (e) => {
     const text = e.payload && e.payload.text
     if (text) showBubble(text, 9000)
+  })
+  safeListen('pet:milk-tea', (e) => {
+    const payload = e.payload || {}
+    playMilkTea(payload.action, payload.reply)
+  })
+  safeListen('pet:touch-line', (e) => {
+    const payload = e.payload || {}
+    if (!payload.zone) return
+    TOUCH_AI_PENDING.delete(payload.zone)
+    replaceTouchLine(payload.zone, payload.line)
   })
   safeListen('pet:tts-stop', stopTts)
   safeListen('pet:tts', (e) => {
@@ -1266,20 +1319,46 @@ function handlePetClick(cx, cy) {
   if (!zone) return
 
   let id
-  let settle = settleIdFor()
-  if (zone === 'leg') {
-    if (granular !== 'sit_upright') return
-    id = 'sit_panic'
-    settle = 'sit_idle'
+  const settle = settleIdFor()
+  const prefix =
+    granular === 'sit_side' ? 'sit_side' : granular === 'sit_upright' ? 'sit' : 'stand'
+  if (zone === 'head') {
+    id = `${prefix}_${Math.random() < 0.5 ? 'wipe' : 'hair'}`
+  } else if (zone === 'belly') {
+    id = `${prefix}_giggle`
   } else {
-    const suffix = zone === 'head' ? 'hair' : 'giggle'
-    const prefix = granular === 'sit_side' ? 'sit_side' : granular === 'sit_upright' ? 'sit' : 'stand'
-    id = `${prefix}_${suffix}`
-    if (!pool.some((i) => i.id === id)) id = `sit_${suffix}`
+    id = `${prefix}_angry`
   }
   if (!pool.some((i) => i.id === id)) return
-  showBubble(pick(INTERACTION_LINES[zone]), 4500)
+  const line = pick(touchLines[zone] || DEFAULT_TOUCH_LINES[zone])
+  showBubble(line, 4500)
   playOneShot(id, settle)
+  requestTouchLine(zone, id)
+}
+
+function requestTouchLine(zone, action) {
+  if (TOUCH_AI_PENDING.has(zone)) return
+  TOUCH_AI_PENDING.add(zone)
+  invoke('touch_line', { zone, action }).catch(() => {
+    TOUCH_AI_PENDING.delete(zone)
+  })
+  // 没网/没配置密钥时 backend 不会回事件，避免一直占着这个区域
+  setTimeout(() => TOUCH_AI_PENDING.delete(zone), 15000)
+}
+
+function playMilkTea(action, reply, attempt = 0) {
+  const item =
+    pool.find((i) => i.id === action) ||
+    pool.find((i) => i.id === 'milk_tea_2003')
+  if (!item) return
+  if (switching || transitioning || aiBusy) {
+    if (attempt < 30) {
+      setTimeout(() => playMilkTea(action, reply, attempt + 1), 200)
+    }
+    return
+  }
+  if (reply) showBubble(reply, 7000)
+  playOneShot(item.id, settleIdFor())
 }
 
 function playAiAction(action) {

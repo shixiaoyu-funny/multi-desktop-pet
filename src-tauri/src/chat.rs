@@ -18,6 +18,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tauri::{AppHandle, Emitter, Manager, State};
 
+use chrono::Local;
+
 use crate::apps::AppCatalog;
 use crate::tools::{ToolOutput, ToolRegistry};
 
@@ -45,6 +47,8 @@ pub struct ChatState {
     history_path: PathBuf,
     affinity: Arc<Mutex<i32>>,
     affinity_path: PathBuf,
+    drink_path: PathBuf,
+    drink_lock: Arc<Mutex<()>>,
     busy: Arc<AtomicBool>,
     context: Arc<Mutex<PetContext>>,
     tools: Arc<ToolRegistry>,
@@ -72,6 +76,7 @@ impl ChatState {
         let apps = Arc::new(AppCatalog::discover());
         let tools = ToolRegistry::with_builtin(apps.clone());
         let affinity_path = dir.join("affinity.json");
+        let drink_path = dir.join("drink.json");
         let affinity = fs::read_to_string(&affinity_path)
             .ok()
             .and_then(|text| serde_json::from_str::<Value>(&text).ok())
@@ -83,6 +88,8 @@ impl ChatState {
             history_path,
             affinity: Arc::new(Mutex::new(affinity)),
             affinity_path,
+            drink_path,
+            drink_lock: Arc::new(Mutex::new(())),
             busy: Arc::new(AtomicBool::new(false)),
             context: Arc::new(Mutex::new(PetContext::default())),
             tools: Arc::new(tools),
@@ -313,6 +320,148 @@ fn save_affinity(path: &Path, score: i32) {
     if let Ok(text) = serde_json::to_string_pretty(&json!({ "score": score })) {
         let _ = fs::write(path, text);
     }
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+struct DrinkData {
+    #[serde(default)]
+    date: String,
+    #[serde(default)]
+    count: u32,
+}
+
+fn today_string() -> String {
+    Local::now().format("%Y-%m-%d").to_string()
+}
+
+fn read_drink(path: &Path) -> DrinkData {
+    let mut data = fs::read_to_string(path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<DrinkData>(&text).ok())
+        .unwrap_or_default();
+    let today = today_string();
+    if data.date != today {
+        data.date = today;
+        data.count = 0;
+    }
+    data
+}
+
+fn save_drink(path: &Path, data: &DrinkData) {
+    if let Ok(text) = serde_json::to_string_pretty(data) {
+        let _ = fs::write(path, text);
+    }
+}
+
+/// Persona plus the current affinity stage, used only for short interactions
+/// (milk tea and touch reactions). It deliberately carries no chat history and
+/// asks for a tiny output, so these background calls never pollute the chat log.
+fn interaction_prompt(affinity: i32, event: &str, instruction: &str) -> String {
+    let stage = affinity_prompt(affinity);
+    format!(
+        "{stage}\n\n\
+         你是 Raven（蕾文），用户的桌面伴侣。\n\
+         外形：黑色长发、红色眼睛、黑红配色的制服、金色发饰。\n\
+         性格：嘴硬心软、傲娇、爱逗用户；被戳中或害羞时会转移话题、小声嘟囔，\
+         但不承认自己黏人。\n\
+         说话：中文，1～2 句，口语化；不写旁白，不解释设定，不提自己是 AI 或模型。\n\
+         当前互动：{event}\n\
+         {instruction}"
+    )
+}
+
+fn quick_completion(
+    client: &reqwest::blocking::Client,
+    key: &str,
+    system: &str,
+    user: &str,
+    max_tokens: u32,
+) -> Result<String, String> {
+    let body = json!({
+        "model": MODEL,
+        "messages": [
+            { "role": "system", "content": system },
+            { "role": "user", "content": user }
+        ],
+        "stream": false,
+        "temperature": 0.85,
+        "max_tokens": max_tokens,
+    });
+    let api_url = std::env::var("RAVEN_CHAT_API_URL").unwrap_or_else(|_| API_URL.to_string());
+    let response = client
+        .post(&api_url)
+        .timeout(Duration::from_secs(25))
+        .bearer_auth(key)
+        .json(&body)
+        .send()
+        .map_err(|error| format!("连接 DashScope 失败：{error}"))?;
+    if !response.status().is_success() {
+        let status = response.status().as_u16();
+        let text = response.text().unwrap_or_default();
+        let brief: String = text.chars().take(300).collect();
+        return Err(format!("DashScope {status}：{brief}"));
+    }
+    let value: Value = response
+        .json()
+        .map_err(|error| format!("解析 DashScope 响应失败：{error}"))?;
+    value
+        .pointer("/choices/0/message/content")
+        .and_then(Value::as_str)
+        .map(|text| text.to_string())
+        .ok_or_else(|| "DashScope 响应缺少 content".to_string())
+}
+
+fn clean_interaction_line(raw: &str) -> Option<String> {
+    let line = raw
+        .trim()
+        .trim_matches(|ch| matches!(ch, '"' | '“' | '”' | '`'))
+        .replace(['\r', '\n'], " ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let length = line.chars().count();
+    if (4..=80).contains(&length) {
+        Some(line)
+    } else {
+        None
+    }
+}
+
+fn parse_drink_result(raw: &str) -> (Option<String>, Option<i32>) {
+    let object = {
+        let start = raw.find('{');
+        let end = raw.rfind('}');
+        match (start, end) {
+            (Some(start), Some(end)) if end > start => {
+                serde_json::from_str::<Value>(&raw[start..=end]).ok()
+            }
+            _ => None,
+        }
+    };
+    let reply = object
+        .as_ref()
+        .and_then(|value| value.get("reply"))
+        .and_then(Value::as_str)
+        .and_then(clean_interaction_line)
+        .or_else(|| clean_interaction_line(raw));
+    let score = object
+        .as_ref()
+        .and_then(|value| value.get("score"))
+        .and_then(|value| {
+            value
+                .as_i64()
+                .or_else(|| value.as_f64().map(|number| number.round() as i64))
+        })
+        .map(|value| (value as i32).clamp(3, 7));
+    (reply, score)
+}
+
+fn fallback_milk_tea_delta() -> i32 {
+    3 + (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.subsec_nanos())
+        .unwrap_or(0)
+        % 5) as i32
 }
 
 fn system_prompt(context: &PetContext, affinity: i32) -> String {
@@ -776,6 +925,146 @@ fn trim_history(history: &mut Vec<ChatMessage>) {
         let drop = history.len() - HISTORY_LIMIT;
         history.drain(0..drop);
     }
+}
+
+#[tauri::command]
+pub fn drink_status(state: State<'_, ChatState>) -> Value {
+    let drink = read_drink(&state.drink_path);
+    json!({
+        "date": drink.date,
+        "count": drink.count,
+        "limit": 2,
+    })
+}
+
+#[tauri::command]
+pub async fn drink_milk_tea(
+    app: AppHandle,
+    state: State<'_, ChatState>,
+) -> Result<Value, String> {
+    let key = api_key().map(|(_, value)| value);
+    let affinity = state.affinity();
+    let client = state.client.clone();
+    let drink_path = state.drink_path.clone();
+    let drink_lock = state.drink_lock.clone();
+    let affinity_shared = state.affinity.clone();
+    let affinity_path = state.affinity_path.clone();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let _guard = drink_lock
+            .lock()
+            .map_err(|_| "奶茶状态锁不可用".to_string())?;
+        let mut drink = read_drink(&drink_path);
+        if drink.count >= 2 {
+            return Err("今天已经喝过两次奶茶了，明天再来吧。".to_string());
+        }
+        drink.count += 1;
+        save_drink(&drink_path, &drink);
+
+        let action = if std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|duration| duration.subsec_nanos())
+            .unwrap_or(0)
+            % 2
+            == 0
+        {
+            "milk_tea_2003"
+        } else {
+            "milk_tea_c"
+        };
+
+        let mut delta = fallback_milk_tea_delta();
+        let mut reply = None;
+        if let Some(key) = key {
+            let system = interaction_prompt(
+                affinity,
+                "用户主动请你喝奶茶，你想接受，但嘴上还要保持一点 Raven 的傲娇。",
+                "只输出一个 JSON 对象，不要 Markdown，不要额外字段；格式为 {\"reply\":\"一句 15~45 字的中文回应\",\"score\":3}。\
+                 score 是你认为这次奶茶带来的好感度变化，必须是 3~7 的整数。",
+            );
+            let user = "请根据当前好感度，回应这杯奶茶，并给出 3~7 的加分。";
+            if let Ok(raw) = quick_completion(&client, &key, &system, user, 120) {
+                let (parsed_reply, parsed_delta) = parse_drink_result(&raw);
+                if let Some(value) = parsed_reply {
+                    reply = Some(value);
+                }
+                if let Some(value) = parsed_delta {
+                    delta = value;
+                }
+            }
+        }
+
+        let reply = reply.unwrap_or_else(|| {
+            "哼，既然你都送到手边了……这次就算你有心。".to_string()
+        });
+        let delta = delta.clamp(3, 7);
+        let score = {
+            let mut current = affinity_shared
+                .lock()
+                .map_err(|_| "好感度锁不可用".to_string())?;
+            *current = current.saturating_add(delta);
+            save_affinity(&affinity_path, *current);
+            *current
+        };
+
+        let _ = app.emit("pet:affinity", json!({ "score": score, "delta": delta }));
+        let _ = app.emit(
+            "pet:milk-tea",
+            json!({ "action": action, "reply": reply }),
+        );
+
+        Ok(json!({
+            "ok": true,
+            "date": drink.date,
+            "count": drink.count,
+            "limit": 2,
+            "delta": delta,
+            "score": score,
+            "action": action,
+            "reply": reply,
+        }))
+    })
+    .await
+    .map_err(|error| format!("奶茶任务失败：{error}"))?
+}
+
+#[tauri::command]
+pub fn touch_line(
+    app: AppHandle,
+    state: State<'_, ChatState>,
+    zone: String,
+    action: String,
+) {
+    let Some((_, key)) = api_key() else {
+        return;
+    };
+    let affinity = state.affinity();
+    let client = state.client.clone();
+    std::thread::spawn(move || {
+        let (zone_label, event) = match zone.as_str() {
+            "head" => ("头部", "用户轻轻摸了摸你的头，你有点受用，但又不想表现得太明显。"),
+            "belly" => ("肚子", "用户碰到你的肚子，你被痒得笑出来，有点不好意思。"),
+            "leg" => ("腿", "用户碰到你的腿，你有点被冒犯，嘴硬地警告对方。"),
+            _ => return,
+        };
+        let system = interaction_prompt(
+            affinity,
+            event,
+            "只输出一句 10~50 字的中文台词，不要 JSON、不要引号、不要解释、不要写旁白；\
+             要像 Raven 本人会说的话，可以傲娇、嘴硬或小声嘟囔，但不要重复同一个口头禅。",
+        );
+        let user = format!(
+            "当前动作：{action}。请为「被摸{zone_label}」生成一句新的互动台词。"
+        );
+        if let Ok(raw) = quick_completion(&client, &key, &system, &user, 80) {
+            if let Some(line) = clean_interaction_line(&raw) {
+                let _ = app.emit(
+                    "pet:touch-line",
+                    json!({ "zone": zone, "line": line }),
+                );
+            }
+        }
+    });
 }
 
 #[tauri::command]

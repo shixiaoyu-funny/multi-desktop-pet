@@ -387,6 +387,41 @@
           "playable": false
         }
       ]
+    },
+    "milk_tea": {
+      "label": "喝奶茶",
+      "loop": false,
+      "playable": false,
+      "items": [
+        {
+          "id": "milk_tea_2003",
+          "label": "喝奶茶 2003",
+          "posture": "stand",
+          "scale": 0.995,
+          "offset": 0,
+          "file": "assets/special/Raven-喝奶茶_2003_768_60fps.webm",
+          "fps": 60,
+          "frames": 0,
+          "duration": 0,
+          "loop": false,
+          "playable": false,
+          "hidden": true
+        },
+        {
+          "id": "milk_tea_c",
+          "label": "喝奶茶 C",
+          "posture": "stand",
+          "scale": 0.995,
+          "offset": 0,
+          "file": "assets/special/Raven-喝奶茶_C_768_60fps.webm",
+          "fps": 60,
+          "frames": 0,
+          "duration": 0,
+          "loop": false,
+          "playable": false,
+          "hidden": true
+        }
+      ]
     }
   }
 }

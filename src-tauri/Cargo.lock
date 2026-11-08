@@ -2688,6 +2688,7 @@ name = "raven-winpet"
 version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
+ "chrono",
  "image",
  "md-5",
  "reqwest 0.12.28",
