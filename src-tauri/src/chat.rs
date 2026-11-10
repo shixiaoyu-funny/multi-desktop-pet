@@ -1045,8 +1045,9 @@ pub async fn drink_milk_tea(
     let drink_lock = state.drink_lock.clone();
     let affinity_shared = state.affinity.clone();
     let affinity_path = state.affinity_path.clone();
+    let app_emit = app.clone();
 
-    tauri::async_runtime::spawn_blocking(move || {
+    let (action, drink) = tauri::async_runtime::spawn_blocking(move || {
         let _guard = drink_lock
             .lock()
             .map_err(|_| "奶茶状态锁不可用".to_string())?;
@@ -1069,9 +1070,18 @@ pub async fn drink_milk_tea(
             "milk_tea_c"
         };
 
-        let mut delta = fallback_milk_tea_delta();
-        let mut reply = None;
-        if let Some(key) = key {
+        // 先让桌宠立即播动画，AI 回复/好感度稍后异步补发。
+        let _ = app_emit.emit("pet:milk-tea", json!({ "action": action }));
+        Ok((action.to_string(), drink))
+    })
+    .await
+    .map_err(|error| format!("奶茶任务失败：{error}"))??;
+
+    if let Some(key) = key {
+        let app = app.clone();
+        std::thread::spawn(move || {
+            let mut delta = fallback_milk_tea_delta();
+            let mut reply = None;
             let system = interaction_prompt(
                 affinity,
                 "用户主动请你喝奶茶，你想接受，但嘴上还要保持一点 Raven 的傲娇。",
@@ -1088,40 +1098,31 @@ pub async fn drink_milk_tea(
                     delta = value;
                 }
             }
-        }
-
-        let reply = reply.unwrap_or_else(|| {
-            "哼，既然你都送到手边了……这次就算你有心。".to_string()
+            let reply = reply.unwrap_or_else(|| {
+                "哼，既然你都送到手边了……这次就算你有心。".to_string()
+            });
+            let delta = delta.clamp(3, 7);
+            let score = {
+                let mut current = affinity_shared
+                    .lock()
+                    .map(|value| *value)
+                    .unwrap_or(affinity);
+                current = current.saturating_add(delta);
+                save_affinity(&affinity_path, current);
+                current
+            };
+            let _ = app.emit("pet:affinity", json!({ "score": score, "delta": delta }));
+            let _ = app.emit("pet:milk-tea-reply", json!({ "text": reply }));
         });
-        let delta = delta.clamp(3, 7);
-        let score = {
-            let mut current = affinity_shared
-                .lock()
-                .map_err(|_| "好感度锁不可用".to_string())?;
-            *current = current.saturating_add(delta);
-            save_affinity(&affinity_path, *current);
-            *current
-        };
+    }
 
-        let _ = app.emit("pet:affinity", json!({ "score": score, "delta": delta }));
-        let _ = app.emit(
-            "pet:milk-tea",
-            json!({ "action": action, "reply": reply }),
-        );
-
-        Ok(json!({
-            "ok": true,
-            "date": drink.date,
-            "count": drink.count,
-            "limit": 2,
-            "delta": delta,
-            "score": score,
-            "action": action,
-            "reply": reply,
-        }))
-    })
-    .await
-    .map_err(|error| format!("奶茶任务失败：{error}"))?
+    Ok(json!({
+        "ok": true,
+        "date": drink.date,
+        "count": drink.count,
+        "limit": 2,
+        "action": action,
+    }))
 }
 
 #[tauri::command]

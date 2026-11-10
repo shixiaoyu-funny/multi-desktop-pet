@@ -248,7 +248,11 @@ async function boot() {
   })
   safeListen('pet:milk-tea', (e) => {
     const payload = e.payload || {}
-    playMilkTea(payload.action, payload.reply)
+    playMilkTea(payload.action)
+  })
+  safeListen('pet:milk-tea-reply', (e) => {
+    const text = e.payload && e.payload.text
+    if (text) showBubble(text, 7000)
   })
   safeListen('pet:touch-line', (e) => {
     const payload = e.payload || {}
