@@ -1,0 +1,108 @@
+/* 透明舞台 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+}
+
+/* 两层视频叠放，靠 opacity 交叉淡入切换 */
+.pet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 512px;
+  height: 512px;
+  opacity: 0;
+  transition: opacity 300ms ease;
+  object-fit: contain;
+  background: transparent;
+  will-change: opacity;
+  cursor: grab;
+}
+
+.pet.on {
+  opacity: 1;
+}
+
+body.dragging .pet {
+  cursor: grabbing;
+}
+
+body.dragging {
+  cursor: grabbing;
+}
+
+/* 互动 / AI 台词气泡 */
+#bubble {
+  position: fixed;
+  left: 50%;
+  top: calc(10% + var(--bubble-offset, 0px));
+  transform: translateX(-50%) translateY(-8px);
+  max-width: 72%;
+  max-height: 26%;
+  overflow: hidden;
+  padding: 10px 15px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #2b2f36;
+  font: 13px/1.5 "Microsoft YaHei", system-ui, sans-serif;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 180ms ease, transform 180ms ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+#bubble.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+#bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border: 7px solid transparent;
+  border-top-color: rgba(255, 255, 255, 0.94);
+}
+
+/* 首次提示气泡 */
+#hint {
+  position: fixed;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(16, 18, 24, 0.78);
+  color: #e8ecf5;
+  font: 13px/1.2 "Microsoft YaHei", system-ui, sans-serif;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+#hint.show {
+  opacity: 1;
+}
+
+/* shixiaoyu-funny原创，详见bilibili：https://space.bilibili.com/517323821?spm_id_from=333.337.0.0，仅供学习，严禁商用 */

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Suki 工具箱</title>
+  <link rel="stylesheet" href="toolbox.css?v=2" />
+</head>
+<body>
+  <header class="tb-head">
+    <div class="tb-head-text">
+      <div class="tb-title">Suki 桌宠 · 工具箱</div>
+    </div>
+    <div class="tb-head-actions">
+      <div class="tb-affection stage-guarded" id="affectionBadge" title="拘谨讨好">好感度 0</div>
+      <button class="chat-entry" id="btnChat">AI 聊天</button>
+    </div>
+  </header>
+
+  <main class="tb-body">
+    <section class="tb-col tb-col-pool">
+      <div class="tb-label">姿态</div>
+      <div class="pool" id="pool"></div>
+
+      <div class="tb-sep"></div>
+      <div class="row" id="rowRandom">
+        <span>随机切换动作</span>
+        <button class="sw" data-toggle="random" title="开/关"><i></i></button>
+      </div>
+      <div class="tb-label">切换间隔</div>
+      <div class="interval-slider">
+        <input id="intervalRange" type="range" min="0" max="2" step="1" value="0" aria-label="动作切换间隔" />
+        <div class="interval-ticks">
+          <button data-interval="180">3 分钟</button>
+          <button data-interval="600">10 分钟</button>
+          <button data-interval="900">15 分钟</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tb-col">
+      <div class="tb-label">大小</div>
+      <div class="seg">
+        <button data-size="large">大</button>
+        <button data-size="medium">中</button>
+        <button data-size="small">小</button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="row" id="rowTop">
+        <span>窗口置顶</span>
+        <button class="sw" data-toggle="top"><i></i></button>
+      </div>
+      <div class="row" id="rowSnap">
+        <span>坐在窗口边缘</span>
+        <button class="sw" data-toggle="snap"><i></i></button>
+      </div>
+      <div class="row" id="rowGravity">
+        <span>重力掉落<em id="gravityNote"></em></span>
+        <button class="sw" data-toggle="gravity"><i></i></button>
+      </div>
+      <div class="row" id="rowTts">
+        <span>语音播报</span>
+        <button class="sw" data-toggle="tts"><i></i></button>
+      </div>
+
+      <div class="milk-tea-box">
+        <button class="milk-tea" id="btnMilkTea" type="button">
+          <span>喝奶茶</span>
+          <em id="milkTeaCount">今日 2/2</em>
+        </button>
+        <small>每天两次 · 好感 +3~7</small>
+      </div>
+      <div class="row" id="rowAutostart">
+        <span>开机自启</span>
+        <button class="sw" data-toggle="autostart" title="开/关"><i></i></button>
+      </div>
+
+      <div class="tb-sep"></div>
+
+      <div class="tb-spacer"></div>
+      <button class="danger" id="btnQuit">退出桌宠</button>
+    </section>
+  </main>
+
+  <div class="dev hidden" id="devPanel">
+    <div class="dev-head">
+      <span>开发者模式 · <b id="devSelectedLabel">站姿待机</b></span>
+      <button class="dev-close" id="devClose" title="关闭">×</button>
+    </div>
+
+    <div class="dev-list" id="devList"></div>
+
+    <div class="dev-controls">
+      <div class="dev-snap-size">
+        <span>坐线档位</span>
+        <button type="button" data-snap-size="small">小</button>
+        <button type="button" data-snap-size="medium">中</button>
+        <button type="button" data-snap-size="large">大</button>
+      </div>
+      <label class="dev-slider">
+        <span>缩放</span>
+        <input id="devScale" type="range" min="0.5" max="1.2" step="0.001" value="1" />
+        <b id="devScaleVal">1.000</b>
+      </label>
+      <label class="dev-slider">
+        <span>偏移</span>
+        <input id="devOffset" type="range" min="-100" max="100" step="0.1" value="0" />
+        <b id="devOffsetVal">0.0</b>
+      </label>
+      <label class="dev-slider">
+        <span>气泡</span>
+        <input id="devBubble" type="range" min="-400" max="400" step="1" value="0" />
+        <b id="devBubbleVal">0px</b>
+      </label>
+      <label class="dev-slider">
+        <span>正坐</span>
+        <input id="devSnapUpright" type="range" min="-150" max="150" step="1" value="61" />
+        <b id="devSnapUprightVal">+61px</b>
+      </label>
+      <label class="dev-slider">
+        <span>鸭子坐</span>
+        <input id="devSnapDuck" type="range" min="-150" max="150" step="1" value="20" />
+        <b id="devSnapDuckVal">+20px</b>
+      </label>
+    </div>
+
+    <div class="dev-actions">
+      <button id="devReset">复位当前</button>
+      <button id="devAll">全部复位</button>
+      <button id="devCopy">复制全部数值</button>
+    </div>
+    <div class="dev-tip" id="devTip">点动作循环预览；拖滑杆实时生效，数值自动记住</div>
+  </div>
+
+  <script src="toolbox.js?v=5"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Suki pet bundle: inserts one row that mounts both halves.
+# The host half serves the WebM action assets and projects session activity;
+# the client half renders the floating pet inside the DSH web page.
+- insert:
+    - id: suki-winpet
+      name: 'dsh-plugin-suki-pet'

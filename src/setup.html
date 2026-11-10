@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Suki · 配置 API Key</title>
+  <link rel="stylesheet" href="setup.css" />
+</head>
+<body>
+  <header class="setup-head">
+    <div class="badge">R</div>
+    <div>
+      <h1>让 Suki 能开口</h1>
+      <p>聊天使用阿里云百炼 <code>qwen3.8-flash</code></p>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="step"><span>1</span> 打开百炼控制台，创建一个 API Key</div>
+      <button id="openConsole" class="primary">打开百炼控制台</button>
+      <p class="muted">API Key 以 <code>sk-</code> 开头；不要把它发到公开仓库。</p>
+    </section>
+
+    <section class="card">
+      <div class="step"><span>2</span> 把 Key 写进用户环境变量</div>
+      <p>在 PowerShell 里执行（把 <code>sk-...</code> 换成你的 Key）：</p>
+      <pre><code>setx DASHSCOPE_API_KEY "sk-..."</code></pre>
+      <p class="muted">也可以：系统属性 → 环境变量 → 用户变量 → 新建 <code>DASHSCOPE_API_KEY</code>。</p>
+    </section>
+
+    <section class="card">
+      <div class="step"><span>3</span> 让运行中的桌宠重新检测</div>
+      <p>点下面的「重新检测」即可；如果仍读不到，再从托盘退出 Suki 重新打开。</p>
+    </section>
+
+    <div id="state" class="state">正在检测环境变量…</div>
+
+    <div class="actions">
+      <button id="recheck" class="primary">重新检测</button>
+      <button id="close" class="ghost">关闭</button>
+    </div>
+
+    <p class="foot">Key 只从环境变量读取，不会写入会话文件，也不会随项目上传。</p>
+  </main>
+
+  <script src="setup.js?v=2"></script>
+</body>
+</html>

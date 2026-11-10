@@ -1,0 +1,351 @@
+{
+  "schema": 5,
+  "character": "Suki",
+  "note": "Suki 动作配置。loop=false 表示只播放一次；过渡由 transition.from/to 驱动，姿态为 stand / sit_upright / sit_duck。touch 与 milk_tea 动作只能由对应交互触发。",
+  "canvas": 768,
+  "defaultPool": "idle",
+  "defaultAction": "stand_idle",
+  "groundRatio": 0.9,
+  "pools": {
+    "idle": {
+      "label": "待机",
+      "loop": true,
+      "playable": true,
+      "items": [
+        {
+          "id": "stand_idle",
+          "label": "站姿待机",
+          "posture": "stand",
+          "scale": 1.0,
+          "file": "assets/idle/stand_idle.webm",
+          "fps": 60,
+          "frames": 354,
+          "duration": 5.9,
+          "ambient": true,
+          "offset": 0
+        },
+        {
+          "id": "sit_upright_idle",
+          "label": "正坐待机",
+          "posture": "sit",
+          "sitKind": "upright",
+          "scale": 1.0,
+          "file": "assets/idle/sit_upright_idle.webm",
+          "fps": 60,
+          "frames": 354,
+          "duration": 5.9,
+          "ambient": true,
+          "offset": 0
+        },
+        {
+          "id": "sit_duck_idle",
+          "label": "鸭子坐待机",
+          "posture": "sit",
+          "sitKind": "duck",
+          "scale": 1.0,
+          "file": "assets/idle/sit_duck_idle.webm",
+          "fps": 60,
+          "frames": 354,
+          "duration": 5.9,
+          "ambient": true,
+          "offset": 0
+        }
+      ]
+    },
+    "touch": {
+      "label": "触摸",
+      "loop": false,
+      "playable": false,
+      "items": [
+        {
+          "id": "stand_wipe",
+          "label": "站姿擦汗",
+          "posture": "stand",
+          "scale": 1.0,
+          "file": "assets/idle/stand_wipe.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch"
+        },
+        {
+          "id": "stand_hair",
+          "label": "站姿撩头发",
+          "posture": "stand",
+          "scale": 1.0,
+          "file": "assets/idle/stand_hair.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch"
+        },
+        {
+          "id": "stand_giggle",
+          "label": "站姿捂嘴笑",
+          "posture": "stand",
+          "scale": 1.0,
+          "file": "assets/idle/stand_giggle.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch"
+        },
+        {
+          "id": "stand_angry",
+          "label": "站姿生气",
+          "posture": "stand",
+          "scale": 1.0,
+          "file": "assets/idle/stand_angry.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch"
+        },
+        {
+          "id": "sit_upright_wipe",
+          "label": "正坐擦汗",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_upright_wipe.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "upright"
+        },
+        {
+          "id": "sit_upright_hair",
+          "label": "正坐撩头发",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_upright_hair.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "upright"
+        },
+        {
+          "id": "sit_upright_giggle",
+          "label": "正坐捂嘴笑",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_upright_giggle.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "upright"
+        },
+        {
+          "id": "sit_upright_angry",
+          "label": "正坐生气",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_upright_angry.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "upright"
+        },
+        {
+          "id": "sit_duck_wipe",
+          "label": "鸭子坐擦汗",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_duck_wipe.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "duck"
+        },
+        {
+          "id": "sit_duck_hair",
+          "label": "鸭子坐撩头发",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_duck_hair.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "duck"
+        },
+        {
+          "id": "sit_duck_giggle",
+          "label": "鸭子坐捂嘴笑",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_duck_giggle.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "duck"
+        },
+        {
+          "id": "sit_duck_angry",
+          "label": "鸭子坐生气",
+          "posture": "sit",
+          "scale": 1.0,
+          "file": "assets/touch/sit_duck_angry.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "touch",
+          "sitKind": "duck"
+        }
+      ]
+    },
+    "drink": {
+      "label": "喝奶茶",
+      "loop": false,
+      "playable": false,
+      "items": [
+        {
+          "id": "drink_milk_tea_a",
+          "label": "喝奶茶 A",
+          "posture": "stand",
+          "scale": 1.0,
+          "file": "assets/drink/drink_milk_tea_a.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "milk_tea"
+        },
+        {
+          "id": "drink_milk_tea_b",
+          "label": "喝奶茶 B",
+          "posture": "stand",
+          "scale": 1.0,
+          "file": "assets/drink/drink_milk_tea_b.webm",
+          "fps": 60,
+          "frames": 178,
+          "duration": 2.967,
+          "ambient": false,
+          "offset": 0,
+          "trigger": "milk_tea"
+        }
+      ]
+    },
+    "trans": {
+      "label": "过渡",
+      "loop": false,
+      "playable": false,
+      "items": [
+        {
+          "id": "trans_stand_to_upright",
+          "label": "站→正坐",
+          "transition": {
+            "from": "stand",
+            "to": "sit_upright"
+          },
+          "scale": 1.0,
+          "file": "assets/trans/trans_stand_to_upright.webm",
+          "fps": 60,
+          "frames": 119,
+          "duration": 1.984,
+          "offset": 0
+        },
+        {
+          "id": "trans_stand_to_duck",
+          "label": "站→鸭子坐",
+          "transition": {
+            "from": "stand",
+            "to": "sit_duck"
+          },
+          "scale": 1.0,
+          "file": "assets/trans/trans_stand_to_duck.webm",
+          "fps": 60,
+          "frames": 119,
+          "duration": 1.984,
+          "offset": 0
+        },
+        {
+          "id": "trans_upright_to_stand",
+          "label": "正坐→站",
+          "transition": {
+            "from": "sit_upright",
+            "to": "stand"
+          },
+          "scale": 1.0,
+          "file": "assets/trans/trans_upright_to_stand.webm",
+          "fps": 60,
+          "frames": 119,
+          "duration": 1.984,
+          "offset": 0
+        },
+        {
+          "id": "trans_duck_to_stand",
+          "label": "鸭子坐→站",
+          "transition": {
+            "from": "sit_duck",
+            "to": "stand"
+          },
+          "scale": 1.0,
+          "file": "assets/trans/trans_duck_to_stand.webm",
+          "fps": 60,
+          "frames": 119,
+          "duration": 1.984,
+          "offset": 0
+        },
+        {
+          "id": "trans_duck_to_upright",
+          "label": "鸭子坐→正坐",
+          "transition": {
+            "from": "sit_duck",
+            "to": "sit_upright"
+          },
+          "scale": 1.0,
+          "file": "assets/trans/trans_duck_to_upright.webm",
+          "fps": 60,
+          "frames": 119,
+          "duration": 1.984,
+          "offset": 0
+        },
+        {
+          "id": "trans_upright_to_duck",
+          "label": "正坐→鸭子坐",
+          "transition": {
+            "from": "sit_upright",
+            "to": "sit_duck"
+          },
+          "scale": 1.0,
+          "file": "assets/trans/trans_upright_to_duck.webm",
+          "fps": 60,
+          "frames": 119,
+          "duration": 1.984,
+          "offset": 0
+        }
+      ]
+    }
+  }
+}

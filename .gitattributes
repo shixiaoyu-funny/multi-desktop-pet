@@ -1,0 +1,12 @@
+# 统一行尾，避免 Windows 检出时把 JS/JSON 改成 CRLF
+* text=auto eol=lf
+
+# 批处理与 PowerShell 脚本保持 CRLF（cmd 对 LF 结尾的 .bat 支持不稳）
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制素材不做行尾转换
+*.webm binary
+*.png binary
+*.ico binary
+*.woff2 binary
