@@ -1,0 +1,75 @@
+/* 桌面漂浮角色窗口 —— 全透明背景，只渲染 WebM 的 Alpha 角色 */
+/* https://space.bilibili.com/517323821?spm_id_from=333.1007.0.0 */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+  cursor: grab;
+}
+
+body:active {
+  cursor: grabbing;
+}
+
+#stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.pet {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+/* 每个动作的缩放/上下偏移在 play() 里按 manifest 的 scale / offset 写进内联样式，
+   这里只提供居中锚点。参数来自单体桌宠（role2 / role7）长时间调参的定稿值。 */
+
+.pet.on {
+  opacity: 1;
+}
+
+/* 桌面角色讲话气泡（浮在角色上方）
+   下移量走 CSS 变量 --bubble-offset（app.js 里的「气泡」滑杆）：
+   窗口本身就是角色画布，头顶在 ~18% 处，所以 6px 已经贴在头顶上方了。 */
+#bubble {
+  position: absolute;
+  left: 50%;
+  top: calc(6px + var(--bubble-offset, 0px));
+  transform: translate(-50%, -6px);
+  max-width: 92%;
+  padding: 7px 11px;
+  border-radius: 12px;
+  background: rgba(28, 22, 28, 0.92);
+  color: #fff;
+  font: 12px/1.45 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  text-align: center;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+#bubble.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}

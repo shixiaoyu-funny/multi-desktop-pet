@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi_Pet</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body data-char="raven">
+  <div id="errBanner" class="err-banner" hidden></div>
+
+  <!-- 顶栏 -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="brand-text">Multi_Pet</span>
+    </div>
+
+    <nav class="char-tabs" id="charTabs"></nav>
+
+    <div class="topbar-actions">
+      <button class="icon-btn" id="settingsBtn" title="设置">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94a7.5 7.5 0 0 0 0-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.61-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.24-1.12.55-1.63.94l-2.39-.96a.5.5 0 0 0-.61.22L2.63 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.33.66.22l2.39-.96c.51.39 1.05.7 1.63.94l.36 2.54c.04.24.24.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.58-.24 1.12-.55 1.63-.94l2.39.96c.24.1.52.02.66-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5z"/></svg>
+        <span>设置</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主布局 -->
+  <main class="layout">
+    <!-- 舞台 -->
+    <section class="stage-panel">
+      <div class="stage" id="stage">
+        <div class="stage-bg"></div>
+        <video id="vidA" class="pet" playsinline muted preload="auto"></video>
+        <video id="vidB" class="pet" playsinline muted preload="auto"></video>
+        <div class="ground-line" id="groundLine"></div>
+        <div class="pet-frame" id="petFrame"><span>桌面窗口框</span></div>
+        <div class="posture-badge" id="postureBadge">站姿</div>
+        <div class="stage-hint" id="stageHint">动作预览 · 桌宠角色在桌面上</div>
+      </div>
+
+      <div class="stage-toolbar">
+        <div class="quick-toggles">
+          <button class="chip" id="gravityChip">重力</button>
+          <button class="chip" id="snapChip">吸附</button>
+          <button class="chip" id="bounceChip" title="脚底钉住，跟着拍子压扁再弹高">弹弹</button>
+          <label class="bounce-speed" title="1 倍是最初的节奏，当前默认 2 倍">
+            <span>倍速</span>
+            <input id="bounceSpeed" type="range" min="0.5" max="4" step="0.01" value="2" />
+            <b id="bounceSpeedVal">2.00×</b>
+          </label>
+          <button class="chip accent" id="milkTeaBtn">🍵 请喝茶饮</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 侧栏 -->
+    <aside class="side-panel">
+      <section class="panel idle-panel">
+        <h3 class="panel-title">待机动画 <span class="sub">循环 · 点击切换</span></h3>
+        <div class="idle-list" id="idleList"></div>
+      </section>
+
+      <section class="panel chat-panel">
+        <div class="chat-head">
+          <h3 class="panel-title">AI 聊天</h3>
+          <span class="affinity-badge" id="affinityBadge" title="好感度">好感 0</span>
+        </div>
+        <div class="chat-log" id="chatLog">
+          <div class="chat-empty" id="chatEmpty">和 TA 说点什么吧～</div>
+        </div>
+        <div class="chat-input">
+          <input id="chatInput" type="text" placeholder="输入消息，回车发送…" autocomplete="off" />
+          <button class="send-btn" id="chatSend">发送</button>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- 设置界面 -->
+  <section class="settings-view" id="settingsView">
+    <div class="settings-card">
+      <div class="settings-head">
+        <h2>设置</h2>
+        <button class="icon-btn" id="settingsClose" title="返回">✕</button>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">角色大小</div>
+          <div class="setting-desc" id="petSizeDesc">桌面窗口边长。小 256、中 384、大 512</div>
+        </div>
+        <div class="size-switch">
+          <button type="button" data-dev-size="small">小</button>
+          <button type="button" data-dev-size="medium">中</button>
+          <button type="button" data-dev-size="large">大</button>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">开机自启动</div>
+          <div class="setting-desc">登录 Windows 后自动运行桌宠</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="setAutostart" /><span class="slider"></span></label>
+      </div>
+
+      <div class="setting-row" id="ttsRow">
+        <div class="setting-info">
+          <div class="setting-label">语音播报</div>
+          <div class="setting-desc" id="ttsDesc">AI 回复时用语音朗读台词</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="setTts" /><span class="slider"></span></label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">允许 AI 联网搜索</div>
+          <div class="setting-desc">开启后 AI 可主动搜索网络；关闭时完全不可联网</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="setWebSearch" /><span class="slider"></span></label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">全屏时静默隐藏</div>
+          <div class="setting-desc">检测到全屏游戏或视频时，桌宠暂停动画并隐藏，同时释放视频解码占用的显存；退出全屏后自动恢复原动作</div>
+        </div>
+        <label class="switch"><input type="checkbox" id="setFullscreenHide" /><span class="slider"></span></label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">弹弹音乐</div>
+          <div class="setting-desc">启动就循环播放，默认静音。打开弹弹才出声，关掉只静音、曲子继续走。这里调的是出声时的音量</div>
+        </div>
+        <label class="music-vol">
+          <input id="bounceMusicVol" type="range" min="0" max="100" step="1" value="70" />
+          <b id="bounceMusicVolVal">70</b>
+        </label>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">清除当前角色记忆</div>
+          <div class="setting-desc">清空聊天历史、长期摘要与好感度（恢复 0）</div>
+        </div>
+        <button class="danger-btn" id="clearMemoryBtn">清除</button>
+      </div>
+
+      <div class="setting-row credit-row">
+        <div class="setting-info">
+          <div class="setting-label">Made by shixiaoyu-funny</div>
+        </div>
+      </div>
+
+      <div class="setting-row credit-row">
+        <div class="setting-info">
+          <a class="credit-link" href="https://space.bilibili.com/517323821?spm_id_from=333.1007.0.0" target="_blank" rel="noreferrer">https://space.bilibili.com/517323821?spm_id_from=333.1007.0.0</a>
+        </div>
+      </div>
+
+      <div class="settings-foot">
+        <button class="ghost-btn" id="quitBtn">退出桌宠</button>
+        <button class="primary-btn" id="settingsDone">完成</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 开发者模式（调参面板） -->
+  <section class="dev-view" id="devView">
+    <div class="dev-card">
+      <div class="dev-head">
+        <div class="dev-title">
+          开发者模式
+          <span class="dev-tag" id="devCharTag">Raven</span>
+        </div>
+        <button class="icon-btn" id="devClose" title="关闭">✕</button>
+      </div>
+
+      <div class="dev-body">
+        <div class="dev-list" id="devList"></div>
+
+        <div class="dev-controls">
+          <div class="dev-selected">当前动作 · <b id="devSelectedLabel">—</b></div>
+
+          <label class="dev-slider">
+            <span>缩放</span>
+            <input id="devScale" type="range" min="0.5" max="1.2" step="0.001" value="1" />
+            <input id="devScaleNum" class="dev-num" type="number" min="0.5" max="1.2" step="0.001" value="1" />
+          </label>
+
+          <label class="dev-slider">
+            <span>偏移</span>
+            <input id="devOffset" type="range" min="-60" max="60" step="0.1" value="0" />
+            <input id="devOffsetNum" class="dev-num" type="number" min="-200" max="200" step="0.1" value="0" />
+          </label>
+          <div class="dev-note" id="devOffsetNote">只改这个动作的接触线（窗口落点），画面位置不变</div>
+
+          <label class="dev-slider">
+            <span>气泡</span>
+            <input id="devBubble" type="range" min="-100" max="400" step="1" value="0" />
+            <input id="devBubbleNum" class="dev-num" type="number" min="-100" max="400" step="1" value="0" />
+          </label>
+          <div class="dev-note" id="devBubbleNote">0 = 气泡贴角色头顶上方。role7 的 150 是按它 819px 高的窗口算的，咱们大 512 档的窗口才 ~410px，照搬会压到脸上。</div>
+
+          <label class="dev-slider" data-dev-kind="stand">
+            <span>站姿</span>
+            <input id="devSnapStand" type="range" min="-150" max="150" step="1" value="0" />
+            <input id="devSnapStandNum" class="dev-num" type="number" min="-300" max="300" step="1" value="0" />
+          </label>
+          <label class="dev-slider" data-dev-kind="upright">
+            <span>正坐</span>
+            <input id="devSnapUpright" type="range" min="-150" max="150" step="1" value="0" />
+            <input id="devSnapUprightNum" class="dev-num" type="number" min="-300" max="300" step="1" value="0" />
+          </label>
+          <label class="dev-slider" data-dev-kind="side">
+            <span>侧坐</span>
+            <input id="devSnapSide" type="range" min="-150" max="150" step="1" value="0" />
+            <input id="devSnapSideNum" class="dev-num" type="number" min="-300" max="300" step="1" value="0" />
+          </label>
+          <label class="dev-slider" data-dev-kind="duck">
+            <span>鸭子坐</span>
+            <input id="devSnapDuck" type="range" min="-150" max="150" step="1" value="0" />
+            <input id="devSnapDuckNum" class="dev-num" type="number" min="-300" max="300" step="1" value="0" />
+          </label>
+          <div class="dev-note" id="devSnapNote">吸附到任务栏 / 窗口上沿时的落脚点微调，正数往下压（脚踩进边里）、负数往上抬。按 角色 × 姿态 × 尺寸档 分开存；滑杆 ±150，要更大就直接在右边输入框里打字（±300）。</div>
+        </div>
+      </div>
+
+      <div class="dev-actions">
+        <button id="devReset">复位当前</button>
+        <button id="devAll">全部复位</button>
+        <button id="devCopy">复制覆盖值</button>
+      </div>
+      <div class="dev-tip" id="devTip">点动作试播；拖滑杆实时生效，数值自动记住 · Ctrl+Shift+D 开关本面板</div>
+    </div>
+  </section>
+
+  <div id="bubble"></div>
+
+  <script src="bounce.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
